@@ -90,10 +90,10 @@
             display: grid;                         /* 使用 Grid 排版 */
             grid-template-columns: repeat(15,30px); /* 15 欄 */
             grid-template-rows: repeat(15,30px);    /* 15 列 */
-            gap: 1px;                              /* 格子間距 */
-            background: #d1a153;                   /* 棋盤顏色 */
-            padding: 10px;
-            width: 464px;
+            gap: 0;                                /* 让网格线连续 */
+            background: #e9c48b;                   /* 木质棋盘底色 */
+            padding: 12px;
+            width: max-content;
             margin: 10px auto;
             border: 2px solid #8a6529;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
@@ -102,16 +102,29 @@
 
         /* 每一格棋盤 */
         .cell {
-            background: #e9c48b;      /* 格子底色 */
-            border-radius: 2px;
+            position: relative;
             cursor: pointer;          /* 滑鼠變手指 */
             display: flex;
             align-items: center;      /* 垂直置中 */
             justify-content: center;  /* 水平置中 */
         }
 
+        /* 横线和直线穿过中央，让棋子落在交叉点 */
+        .cell::before,
+        .cell::after {
+            content: "";
+            position: absolute;
+            background: #6f4e24;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .cell::before { left: 0; right: 0; top: 50%; height: 1px; }
+        .cell::after { top: 0; bottom: 0; left: 50%; width: 1px; }
+
         /* 棋子共同樣式 */
         .piece {
+            position: relative;
+            z-index: 2;
             width: 26px;
             height: 26px;
             border-radius: 50%;       /* 圓形 */
@@ -333,7 +346,7 @@
     <h1>五子棋（限時人機戰）· 改進版</h1>
 
     <!-- 顯示遊戲目前狀態，例如輪到誰下棋、勝負結果等 -->
-    <div id="status">遊戲開始！你拿黑子，請下棋。</div>
+    <div id="status">游戏准备中...</div>
 
     <!-- AI 上一手的小字說明 -->
     <div id="ai-log"></div>
@@ -355,6 +368,9 @@
         <!-- 重新開始（重玩圖示） -->
         <button class="tool-btn" onclick="resetGame()" title="重新開始">
             <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+        <button class="tool-btn" id="pause-btn" onclick="toggleGamePause()" title="暫停遊戲">
+            <svg id="pause-icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
         </button>
         <!-- 回放（膠卷/播放圖示） -->
         <button class="tool-btn" onclick="focusReplay()" title="回放本局">
@@ -391,6 +407,9 @@
                     <button class="rp-btn" id="rp-play" onclick="replayToggle()" title="播放/暫停">
                         <svg id="rp-play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     </button>
+                    <button class="rp-btn" onclick="replayStep(-1)" title="上一步">◀</button>
+                    <button class="rp-btn" onclick="replayStep(1)" title="下一步">▶</button>
+                    <button class="rp-btn" onclick="exitReplay()" title="返回棋局">↩</button>
                 </div>
                 <input type="range" id="rp-slider" min="0" max="0" value="0" oninput="replaySeek(this.value)">
                 <div class="rp-info" id="rp-info">尚無棋步</div>
@@ -429,11 +448,15 @@
     // 1 = 玩家(黑子)
     // 2 = AI(白子)
     let currentPlayer = 1;
+    // 1 永远代表黑棋、2 永远代表白棋；每局随机决定玩家身份
+    let humanPlayer = 1;
+    let aiPlayer = 2;
 
     // 紀錄遊戲是否仍在進行中
     // true = 遊戲進行中
     // false = 遊戲結束
     let gameActive = true;
+    let gamePaused = false;
 
     // =========================
     // 計時器相關變數
@@ -500,13 +523,13 @@
            // =========================
     // 啟動倒數計時器
     // =========================
-    function startTimer() {
+    function startTimer(resetTime = true) {
 
         // 若之前已有計時器，先停止避免重複計時
         clearInterval(timerInterval);
 
-        // 將剩餘時間重設為每回合的限制時間（15 秒）
-        timeLeft = MOVE_TIME_LIMIT;
+        // 新回合重设时间；暂停后继续则保留剩余秒数
+        if (resetTime) timeLeft = MOVE_TIME_LIMIT;
 
         // 更新時間條畫面
         updateTimerUI();
@@ -574,7 +597,7 @@
         gameActive = false;
 
         // 判斷是哪一方超時
-        if (currentPlayer === 1) {
+        if (currentPlayer === humanPlayer) {
 
             // 玩家超時，判定電腦獲勝
             statusElement.innerText = "時間到！你輸了（電腦獲勝）❌";
@@ -591,19 +614,20 @@
     // =========================
     function playerMove(r, c) {
 
+        if (gamePaused || replayMode) return;
         // 如果格子已有棋子、遊戲已結束
         // 或目前不是玩家回合，就不允許下棋
-        if (board[r][c] !== 0 || !gameActive || currentPlayer !== 1)
+        if (board[r][c] !== 0 || !gameActive || currentPlayer !== humanPlayer)
             return;
 
         // 在指定位置放置玩家的黑棋
-        executeMove(r, c, 1);
+        executeMove(r, c, humanPlayer);
 
         // 如果遊戲尚未結束，換 AI 下棋
         if (gameActive) {
 
             // 換成 AI 回合
-            currentPlayer = 2;
+            currentPlayer = aiPlayer;
 
             // 更新狀態文字
             statusElement.innerText = "電腦思考中...";
@@ -654,7 +678,7 @@
 
             // 顯示獲勝者
             statusElement.innerText =
-                `獲勝者是：${player === 1 ? '你（黑子）🎉' : '電腦（白子）🤖'}！`;
+                `获胜者是：${player === humanPlayer ? '你' : '电脑'}（${player === 1 ? '黑子' : '白子'}）！`;
 
             // 將遊戲狀態設為結束
             gameActive = false;
@@ -770,7 +794,7 @@
 
     // AI(2) 決策：回傳 {r, c, why}
     function findBestMove(b) {
-        const AI = 2, HUMAN = 1;
+        const AI = aiPlayer, HUMAN = humanPlayer;
         const cand = getCandidates(b);
 
         // 第一層：自己成五必贏
@@ -812,7 +836,7 @@
         const move = findBestMove(board);
 
         // 在最佳位置放置白棋
-        executeMove(move.r, move.c, 2);
+        executeMove(move.r, move.c, aiPlayer);
 
         // 顯示 AI 這一手的理由（小字）
         aiLogElement.innerText = `電腦下在 (${move.r}, ${move.c})：${move.why}`;
@@ -821,13 +845,37 @@
         if (gameActive) {
 
             // 換回玩家
-            currentPlayer = 1;
+            currentPlayer = humanPlayer;
 
             // 更新狀態文字
-            statusElement.innerText = "輪到你了（黑子）";
+            statusElement.innerText = `轮到你了（${humanPlayer === 1 ? '黑子' : '白子'}）`;
 
             // 重新開始玩家的 15 秒倒數
             startTimer();
+        }
+    }
+
+    // 暂停或继续实际对局；AI 思考期间先等 AI 落子完成
+    function toggleGamePause() {
+        if (!gameActive || replayMode) return;
+        if (currentPlayer === aiPlayer) {
+            statusElement.innerText = '电脑思考中，请稍后暂停。';
+            return;
+        }
+
+        gamePaused = !gamePaused;
+        const icon = document.getElementById('pause-icon');
+        const button = document.getElementById('pause-btn');
+        if (gamePaused) {
+            clearInterval(timerInterval);
+            statusElement.innerText = '游戏已暂停';
+            icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            button.title = '继续游戏';
+        } else {
+            statusElement.innerText = '轮到你了（黑子）';
+            icon.innerHTML = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
+            button.title = '暂停游戏';
+            startTimer(false);
         }
     }
 
@@ -835,6 +883,15 @@
     // 重新開始遊戲
     // =========================
     function resetGame() {
+
+        stopReplayTimer();
+        replayPlaying = false;
+        replayMode = false;
+        replayIndex = 0;
+        gamePaused = false;
+        updatePlayIcon();
+        const pauseIcon = document.getElementById('pause-icon');
+        pauseIcon.innerHTML = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
 
         // 停止目前的倒數計時
         clearInterval(timerInterval);
@@ -851,32 +908,37 @@
 
         drawHistory();
 
-        // 重新設定由玩家（黑子）先下
+        // 每局随机分配玩家颜色，但黑棋（数值 1）永远先手
+        humanPlayer = Math.random() < 0.5 ? 1 : 2;
+        aiPlayer = humanPlayer === 1 ? 2 : 1;
         currentPlayer = 1;
 
         // 將遊戲狀態設為進行中
         gameActive = true;
 
-        // 更新畫面提示文字
-        statusElement.innerText = "遊戲開始！你拿黑子，請下棋。";
-        aiLogElement.innerText = "";
+        // 显示本局随机分配结果
+        const humanColor = humanPlayer === 1 ? '黑子' : '白子';
+        statusElement.innerText = `本局你拿${humanColor}。`;
+        aiLogElement.innerText = '';
 
         // 重新建立空棋盤畫面
         createBoard();
 
-        // 重新開始玩家的 15 秒倒數
-        startTimer();
+        // 黑棋先手；若电脑抽到黑棋，就由电脑自动下第一手
+        if (currentPlayer === humanPlayer) {
+            statusElement.innerText += ' 请下棋。';
+            startTimer();
+        } else {
+            statusElement.innerText += ' 电脑先手。';
+            setTimeout(aiMove, 400);
+        }
     }
 
     // =========================
     // 網頁初始化
     // =========================
 
-    // 建立棋盤畫面
-    createBoard();
-
-    // 網頁載入完成後立即開始第一回合倒數
-    startTimer();
+    // 实际初始化延后到回放状态宣告完成后执行
 
     function saveHistory(){
 
@@ -944,6 +1006,42 @@
     let replayTimer = null;   // 播放用的 setInterval 編號
     let replayPlaying = false;
 
+    let replayMode = false;
+    let pausedBeforeReplay = false;
+
+    // 进入回放时暂停真实对局，避免计时与落子继续在背景运行
+    function enterReplay() {
+        if (moveList.length === 0) return false;
+        if (gameActive && currentPlayer === aiPlayer) {
+            statusElement.innerText = '电脑思考中，请稍后回放。';
+            return false;
+        }
+        if (!replayMode) {
+            replayMode = true;
+            pausedBeforeReplay = gamePaused;
+            clearInterval(timerInterval);
+            statusElement.innerText = '回放模式：对局已暂停';
+        }
+        return true;
+    }
+
+    // 返回最后一手的真实棋局，并按进入回放前的状态恢复
+    function exitReplay() {
+        stopReplayTimer();
+        replayPlaying = false;
+        replayMode = false;
+        replayIndex = moveList.length;
+        renderReplay();
+        updatePlayIcon();
+        gamePaused = pausedBeforeReplay;
+        if (gameActive && !gamePaused && currentPlayer === humanPlayer) {
+            statusElement.innerText = '轮到你了（黑子）';
+            startTimer(false);
+        } else if (gamePaused) {
+            statusElement.innerText = '游戏已暂停';
+        }
+    }
+
     // 依 replayIndex 重繪棋盤（只畫前 replayIndex 手）
     function renderReplay() {
         // 先清掉棋盤上所有棋子（把每格的 .piece 移除）
@@ -969,16 +1067,26 @@
         if (moveList.length === 0) {
             info.innerText = '尚無棋步';
         } else {
-            const who = replayIndex === 0 ? '開局' :
-                (moveList[replayIndex - 1].player === 1 ? '黑子(你)' : '白子(電腦)');
+            const lastPlayer = replayIndex === 0 ? null : moveList[replayIndex - 1].player;
+            const who = replayIndex === 0 ? '开局' :
+                `${lastPlayer === 1 ? '黑子' : '白子'}（${lastPlayer === humanPlayer ? '你' : '电脑'}）`;
             info.innerText = `第 ${replayIndex} / ${moveList.length} 手（${who}）`;
         }
     }
 
     // 跳到指定手數
     function replayTo(idx) {
+        if (!enterReplay()) return;
         replayIndex = Math.max(0, Math.min(idx, moveList.length));
         renderReplay();
+    }
+
+    // 单步浏览会自动暂停回放
+    function replayStep(delta) {
+        stopReplayTimer();
+        replayPlaying = false;
+        updatePlayIcon();
+        replayTo(replayIndex + delta);
     }
 
     // 拖動滑桿
@@ -992,6 +1100,7 @@
     // 播放 / 暫停切換
     function replayToggle() {
         if (moveList.length === 0) return;
+        if (!enterReplay()) return;
         if (replayPlaying) {
             stopReplayTimer();
             replayPlaying = false;
@@ -1066,6 +1175,9 @@
 
     // 初始化回放面板
     renderReplay();
+
+    // 所有状态与回放函数都已初始化，现在开始第一局
+    resetGame();
 
     </script>
 </body>
