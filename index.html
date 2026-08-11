@@ -1008,6 +1008,8 @@
 
     let replayMode = false;
     let pausedBeforeReplay = false;
+    let statusBeforeReplay = '';
+    let aiLogBeforeReplay = '';
 
     // 进入回放时暂停真实对局，避免计时与落子继续在背景运行
     function enterReplay() {
@@ -1019,8 +1021,11 @@
         if (!replayMode) {
             replayMode = true;
             pausedBeforeReplay = gamePaused;
+            statusBeforeReplay = statusElement.innerText;
+            aiLogBeforeReplay = aiLogElement.innerText;
             clearInterval(timerInterval);
             statusElement.innerText = '回放模式：对局已暂停';
+            aiLogElement.innerText = '使用按钮、滑杆或播放键浏览棋谱';
         }
         return true;
     }
@@ -1034,11 +1039,11 @@
         renderReplay();
         updatePlayIcon();
         gamePaused = pausedBeforeReplay;
+        statusElement.innerText = statusBeforeReplay;
+        aiLogElement.innerText = aiLogBeforeReplay;
+        document.getElementById('sidepanel').style.maxHeight = '';
         if (gameActive && !gamePaused && currentPlayer === humanPlayer) {
-            statusElement.innerText = '轮到你了（黑子）';
             startTimer(false);
-        } else if (gamePaused) {
-            statusElement.innerText = '游戏已暂停';
         }
     }
 
@@ -1074,11 +1079,14 @@
         }
     }
 
-    // 跳到指定手數
+    // 手动跳转会暂停自动播放，避免画面继续自行前进
     function replayTo(idx) {
         if (!enterReplay()) return;
+        stopReplayTimer();
+        replayPlaying = false;
         replayIndex = Math.max(0, Math.min(idx, moveList.length));
         renderReplay();
+        updatePlayIcon();
     }
 
     // 单步浏览会自动暂停回放
@@ -1112,6 +1120,7 @@
                 if (replayIndex >= moveList.length) {
                     stopReplayTimer();
                     replayPlaying = false;
+                    statusElement.innerText = '回放结束：按 ↩ 返回棋局';
                     updatePlayIcon();
                     return;
                 }
@@ -1139,38 +1148,23 @@
         }
     }
 
-    // 把手上的常駐播放/暫停鈕：收起態也能直接點
-    // 點擊 → 展開面板 + 切換播放；播完自動收回
+    // 把手播放键：面板保持展开，直到使用者按返回棋局
     function handlePlay() {
-        const rp = document.getElementById('sidepanel');
-        if (moveList.length === 0) return;          // 尚無棋步不動作
-        rp.style.maxHeight = '380px';               // 展開讓使用者看到縮圖/滑桿
-        replayToggle();                             // 切換播放/暫停
-        // 播放結束後 1.5 秒自動收回
-        const watch = setInterval(() => {
-            if (!replayPlaying) {
-                clearInterval(watch);
-                setTimeout(() => { rp.style.maxHeight = ''; }, 1500);
-            }
-        }, 400);
+        if (moveList.length === 0) return;
+        document.getElementById('sidepanel').style.maxHeight = '380px';
+        replayToggle();
     }
 
-    // 點工具列的回放圖示：自動展開並播放，播完後自動收回
+    // 工具列回放键：从开局开始播放，结束后保持最后一手
     function focusReplay() {
+        if (!enterReplay()) return;
         const rp = document.getElementById('sidepanel');
-        stopReplayTimer();
+        rp.style.maxHeight = '380px';
+        replayIndex = 0;
+        renderReplay();
         replayPlaying = false;
         updatePlayIcon();
-        replayTo(0);
-        rp.style.maxHeight = '380px';   // 強制展開
-        replayToggle();                 // 開始播放
-        // 播放結束後 1.5 秒自動收回（滑鼠移開後維持收起）
-        const watch = setInterval(() => {
-            if (!replayPlaying) {
-                clearInterval(watch);
-                setTimeout(() => { rp.style.maxHeight = ''; }, 1500);
-            }
-        }, 400);
+        replayToggle();
     }
 
     // 初始化回放面板
