@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<!-- 宣告 HTML5 文件 -->
+
+<html lang="zh-TW">
+<!-- 網頁使用繁體中文 -->
+
+<head>
+    <!-- 網頁設定開始 -->
+
+    <meta charset="UTF-8">
+    <!-- 設定文字編碼為 UTF-8，避免中文亂碼 -->
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 讓手機、平板可以依照螢幕大小自動縮放 -->
+
+    <title>AI 五子棋（限時挑戰）· 改進版</title>
+    <!-- 瀏覽器分頁標題 -->
+
+    <style>
+        /* =========================
+           整體頁面樣式
+           ========================= */
+        body {
+            font-family: Arial, sans-serif; /* 字型 */
+            text-align: center;             /* 文字置中 */
+            background: #f0f0f0;            /* 背景顏色 */
+            margin: 0;                      /* 外距 */
+            padding: 20px;                  /* 內距 */
+            display: flex;                  /* 用 flex 讓整體垂直分布 */
+            flex-direction: column;         /* 由上到下排列 */
+            align-items: center;            /* 水平置中 */
+            min-height: 100vh;              /* 至少填滿整個視窗高度 */
+            box-sizing: border-box;
+        }
+
+        /* 標題樣式 */
+        h1 {
+            margin-bottom: 10px;   /* 下方留白 */
+            color: #222;           /* 字體顏色 */
+        }
+
+        /* 狀態文字（目前輪到誰、勝負等） */
+        #status {
+            font-size: 22px;       /* 字體大小 */
+            margin: 5px;
+            font-weight: bold;     /* 粗體 */
+            color: #333;
+            height: 30px;          /* 固定高度避免跳動 */
+        }
+
+        /* AI 上一手說明（小字） */
+        #ai-log {
+            font-size: 13px;
+            color: #888;
+            height: 16px;
+            margin-bottom: 4px;
+        }
+
+        /* =========================
+           倒數時間條
+           ========================= */
+
+        /* 時間條外框 */
+        #timer-container {
+            width: 464px;          /* 寬度 */
+            height: 12px;          /* 高度 */
+            background: #ddd;      /* 灰色背景 */
+            margin: 10px auto;     /* 水平置中 */
+            border-radius: 6px;    /* 圓角 */
+            overflow: hidden;      /* 超出部分隱藏 */
+            border: 1px solid #bbb;
+        }
+
+        /* 時間條本體 */
+        #timer-bar {
+            width: 100%;           /* 一開始滿格 */
+            height: 100%;
+            background: #4caf50;   /* 綠色 */
+            transition:
+                width 0.1s linear,
+                background-color 0.5s;
+            /* 長度與顏色變化時有動畫效果 */
+        }
+
+        /* =========================
+           棋盤樣式
+           ========================= */
+
+        #board {
+            display: grid;                         /* 使用 Grid 排版 */
+            grid-template-columns: repeat(15,30px); /* 15 欄 */
+            grid-template-rows: repeat(15,30px);    /* 15 列 */
+            gap: 1px;                              /* 格子間距 */
+            background: #d1a153;                   /* 棋盤顏色 */
+            padding: 10px;
+            width: 464px;
+            margin: 10px auto;
+            border: 2px solid #8a6529;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+
+        /* 每一格棋盤 */
+        .cell {
+            background: #e9c48b;      /* 格子底色 */
+            border-radius: 2px;
+            cursor: pointer;          /* 滑鼠變手指 */
+            display: flex;
+            align-items: center;      /* 垂直置中 */
+            justify-content: center;  /* 水平置中 */
+        }
+
+        /* 棋子共同樣式 */
+        .piece {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;       /* 圓形 */
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+
+        /* 黑棋：深色漸層 + 高光，立體感 */
+        .black {
+            background: radial-gradient(circle at 35% 30%, #555, #000 70%);
+            border: 1px solid #000;
+        }
+
+        /* 白棋：亮白漸層 + 灰描邊，在淺棕棋盤上也清楚可見 */
+        .white {
+            background: radial-gradient(circle at 35% 30%, #ffffff, #d8d8d8 75%);
+            border: 1.5px solid #888;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.45);
+        }
+
+        /* 按鈕樣式 */
+        button {
+            padding: 10px 25px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid #999;
+            background: #fff;
+            font-weight: bold;
+            margin: 4px;
+        }
+
+        /* 滑鼠移到按鈕上的效果 */
+        button:hover {
+            background: #e0e0e0;
+        }
+
+        /* 頂部工具列（圖示按鈕） */
+        #toolbar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            margin: 6px 0 10px;
+        }
+
+        .tool-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            border: 1px solid #bbb;
+            background: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: background 0.2s, transform 0.1s;
+            padding: 0;
+        }
+        .tool-btn:hover { background: #eef3ff; transform: translateY(-1px); }
+        .tool-btn:active { transform: translateY(1px); }
+        .tool-btn svg { width: 26px; height: 26px; fill: #333; }
+
+        /* 棋盤容器：grid 三欄，棋盤居中，歷史/回放與棋盤頂部對齊 */
+        #game-container{
+            display:grid;
+            grid-template-columns: 160px auto 160px;
+            align-items:start;            /* 頂部對齊 */
+            justify-content:center;
+            gap:8px;
+            width:100%;
+        }
+
+        /* 左側占位（保持棋盤居中用） */
+        #left-spacer{ width:160px; }
+
+        /* 右側：歷史 + 回放 都放進一個 wrapper，垂直堆疊，頂部與棋盤對齊 */
+        #right-panel{
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+            align-items:stretch;
+            box-sizing:border-box;
+        }
+
+        /* 歷史區框 */
+        #history{
+            display:flex;
+            flex-direction:column;
+            gap:6px;
+            padding:8px;
+            width:160px;
+            box-sizing:border-box;
+            background:#ffffff;
+            border:2px solid #aaa;
+            border-radius:10px;
+            box-shadow:0 3px 8px rgba(0,0,0,0.2);
+        }
+
+        /* 小棋盤（縮小） */
+        .history-board{
+            display:grid;
+            grid-template-columns:repeat(15,4px);
+            grid-template-rows:repeat(15,4px);
+            gap:1px;
+            background:#d1a153;
+            padding:3px;
+            border-radius:4px;
+            transition:0.2s;
+            cursor:pointer;
+        }
+        .history-board:hover{ transform:scale(1.4); }
+        .history-board.latest{
+            grid-template-columns:repeat(15,6px);
+            grid-template-rows:repeat(15,6px);
+            transform:scale(1.05);
+            border:2px solid red;
+        }
+
+        /* 統一可伸縮面板：歷史縮圖 + 回放控制，預設收成窄把手，hover 展開 */
+        #sidepanel{
+            width:160px;
+            box-sizing:border-box;
+            border:2px solid #6a8cff;
+            border-radius:10px;
+            background:#f7f9ff;
+            box-shadow:0 3px 8px rgba(0,0,0,0.15);
+            overflow:hidden;
+            max-height:34px;             /* 收起時只留把手高度 */
+            transition:max-height 0.25s ease;
+        }
+        #sidepanel:hover{
+            max-height:380px;            /* 展開（含縮圖+控制） */
+        }
+        #sidepanel .sidepanel-handle{
+            display:flex;
+            align-items:center;
+            gap:6px;
+            padding:7px 10px;
+            font-size:13px;
+            font-weight:bold;
+            color:#3a5bd0;
+            cursor:pointer;
+            user-select:none;
+            background:#eef2ff;        /* 把手底色，像一條可展開的標籤 */
+        }
+        /* 常駐播放鈕：推到把手最右側，收起態也能直接點 */
+        #sidepanel .handle-play{
+            margin-left:auto;          /* 推到右邊 */
+            width:24px;
+            height:24px;
+            border-radius:50%;
+            border:1px solid #3a5bd0;
+            background:#fff;
+            color:#3a5bd0;
+            font-size:11px;
+            line-height:1;
+            cursor:pointer;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:0;
+        }
+        #sidepanel .handle-play:hover{ background:#dde6ff; }
+        /* 收起時顯示 ▸，展開後變 ▾ */
+        #sidepanel .sidepanel-handle::before{
+            content:"\25B8";            /* ▸ 右三角，提示可展開 */
+            font-size:12px;
+            transition:transform 0.2s;
+        }
+        #sidepanel:hover .sidepanel-handle::before{
+            content:"\25BE";            /* ▾ 下三角，提示已展開 */
+        }
+        #sidepanel .sidepanel-handle svg{ width:16px; height:16px; fill:#3a5bd0; }
+        #sidepanel .sidepanel-body{
+            padding:8px 10px 12px;
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+        }
+        #sidepanel .replay-controls{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:10px;
+        }
+        #sidepanel .rp-btn{
+            border:none;
+            background:transparent;
+            cursor:pointer;
+            padding:2px;
+        }
+        #sidepanel .rp-btn svg{ width:24px; height:24px; fill:#3a5bd0; }
+        #sidepanel .rp-btn:disabled{ opacity:0.3; cursor:default; }
+        #sidepanel input[type=range]{ width:100%; }
+        #sidepanel .rp-info{ font-size:12px; color:#555; text-align:center; }
+
+        .history-cell{
+            background:#e9c48b;
+        }
+
+        .history-black{
+            background:black;
+            border-radius:50%;
+        }
+
+        .history-white{
+            background:white;
+            border-radius:50%;
+        }
+
+    </style>
+    <!-- CSS 樣式結束 -->
+
+</head>
+<body>
+
+       <!-- 網頁主標題 -->
+    <h1>五子棋（限時人機戰）· 改進版</h1>
+
+    <!-- 顯示遊戲目前狀態，例如輪到誰下棋、勝負結果等 -->
+    <div id="status">遊戲開始！你拿黑子，請下棋。</div>
+
+    <!-- AI 上一手的小字說明 -->
+    <div id="ai-log"></div>
+
+    <!-- =========================
+         倒數計時條
+         ========================= -->
+
+    <!-- 時間條外框 -->
+    <div id="timer-container">
+
+        <!-- 動態時間條，JavaScript 會依剩餘時間改變寬度 -->
+        <div id="timer-bar"></div>
+
+    </div>
+
+    <!-- 頂部工具列：圖示按鈕取代純文字按鈕 -->
+    <div id="toolbar">
+        <!-- 重新開始（重玩圖示） -->
+        <button class="tool-btn" onclick="resetGame()" title="重新開始">
+            <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+        <!-- 回放（膠卷/播放圖示） -->
+        <button class="tool-btn" onclick="focusReplay()" title="回放本局">
+            <svg viewBox="0 0 24 24"><path d="M4 4h2v16H4zM20 4h2v16h-2zM7 6h11v12H7zM10 9l5 3-5 3z"/></svg>
+        </button>
+    </div>
+
+    <!-- =========================
+         五子棋棋盤
+         JavaScript 會動態建立 15×15 格
+         ========================= -->
+    <div id="game-container">
+    <div id="left-spacer"></div>
+    <div id="board"></div>
+
+    <div id="right-panel">
+        <!-- 統一可伸縮面板：歷史縮圖 + 回放控制
+             收起時只露把手，滑鼠移上展開 -->
+        <div id="sidepanel">
+            <div class="sidepanel-handle">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span>歷史 / 回放</span>
+                <!-- 常駐播放/暫停鈕：收起態也能直接點 -->
+                <button class="handle-play" id="handle-play" onclick="handlePlay()" title="播放/暫停回放">▶</button>
+            </div>
+            <div class="sidepanel-body">
+                <!-- 最近步數縮圖 -->
+                <div id="history"></div>
+                <!-- 回放控制 -->
+                <div class="replay-controls">
+                    <button class="rp-btn" id="rp-restart" onclick="replayTo(0)" title="到開頭">
+                        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3 6l9 6V6z"/></svg>
+                    </button>
+                    <button class="rp-btn" id="rp-play" onclick="replayToggle()" title="播放/暫停">
+                        <svg id="rp-play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </button>
+                </div>
+                <input type="range" id="rp-slider" min="0" max="0" value="0" oninput="replaySeek(this.value)">
+                <div class="rp-info" id="rp-info">尚無棋步</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <script>
+            // =========================
+    // 遊戲基本設定
+    // =========================
+
+    // 棋盤大小（15 × 15）
+    const BOARD_SIZE = 15;
+
+    // 每位玩家每一步下棋的時間限制（15 秒）
+    const MOVE_TIME_LIMIT = 15;
+
+    // =========================
+    // 遊戲變數
+    // =========================
+
+    // 建立 15×15 的二維陣列作為棋盤
+    // 0 = 空格、1 = 玩家(黑子)、2 = AI(白子)
+    let board = Array(BOARD_SIZE)
+        .fill(null)
+        .map(() => Array(BOARD_SIZE).fill(0));
+
+    let historyBoards = [];
+
+    // 回放用：記錄每一步落子 {r, c, player}（順序即下棋順序）
+    let moveList = [];
+
+    // 記錄目前輪到誰下棋
+    // 1 = 玩家(黑子)
+    // 2 = AI(白子)
+    let currentPlayer = 1;
+
+    // 紀錄遊戲是否仍在進行中
+    // true = 遊戲進行中
+    // false = 遊戲結束
+    let gameActive = true;
+
+    // =========================
+    // 計時器相關變數
+    // =========================
+
+    // 剩餘秒數，一開始為 15 秒
+    let timeLeft = MOVE_TIME_LIMIT;
+
+    // 儲存 setInterval 的編號，方便之後停止計時
+    let timerInterval = null;
+
+    // =========================
+    // 取得 HTML 元素
+    // =========================
+
+    // 棋盤區域
+    const boardElement = document.getElementById('board');
+
+    // 顯示遊戲狀態的文字
+    const statusElement = document.getElementById('status');
+
+    // AI 上一手說明
+    const aiLogElement = document.getElementById('ai-log');
+
+    // 倒數時間條
+    const timerBar = document.getElementById('timer-bar');
+
+    // =========================
+    // 初始化棋盤
+    // =========================
+
+    // 建立 15×15 的棋盤畫面
+    function createBoard() {
+
+        // 清空棋盤內容，避免重新開始時重複建立
+        boardElement.innerHTML = '';
+
+        // 建立每一列
+        for (let r = 0; r < BOARD_SIZE; r++) {
+
+            // 建立每一欄
+            for (let c = 0; c < BOARD_SIZE; c++) {
+
+                // 建立一個棋盤格子(div)
+                const cell = document.createElement('div');
+
+                // 加入 cell 樣式
+                cell.classList.add('cell');
+
+                // 設定格子的唯一 ID
+                // 例如：cell-3-5
+                cell.id = `cell-${r}-${c}`;
+
+                // 點擊格子時，呼叫 playerMove() 函式
+                // 並將目前列(row)與欄(column)傳入
+                cell.onclick = () => playerMove(r, c);
+
+                // 將格子加入棋盤中
+                boardElement.appendChild(cell);
+            }
+        }
+    }
+
+           // =========================
+    // 啟動倒數計時器
+    // =========================
+    function startTimer() {
+
+        // 若之前已有計時器，先停止避免重複計時
+        clearInterval(timerInterval);
+
+        // 將剩餘時間重設為每回合的限制時間（15 秒）
+        timeLeft = MOVE_TIME_LIMIT;
+
+        // 更新時間條畫面
+        updateTimerUI();
+
+        // 每 0.1 秒執行一次倒數
+        timerInterval = setInterval(() => {
+
+            // 如果遊戲已經結束，就停止計時
+            if (!gameActive) {
+                clearInterval(timerInterval);
+                return;
+            }
+
+            // 每次減少 0.1 秒
+            timeLeft -= 0.1;
+
+            // 更新時間條長度與顏色
+            updateTimerUI();
+
+            // 如果時間已經歸零
+            if (timeLeft <= 0) {
+
+                // 停止計時器
+                clearInterval(timerInterval);
+
+                // 執行超時處理（判定輸贏或換人）
+                handleTimeout();
+            }
+
+        }, 100); // 每 100 毫秒（0.1 秒）更新一次
+    }
+
+    // =========================
+    // 更新時間條的畫面效果
+    // =========================
+    function updateTimerUI() {
+
+        // 計算目前剩餘時間百分比
+        const percentage = (timeLeft / MOVE_TIME_LIMIT) * 100;
+
+        // 修改時間條寬度
+        // Math.max(0, percentage) 可避免寬度變成負值
+        timerBar.style.width = `${Math.max(0, percentage)}%`;
+
+        // 當剩餘時間小於等於 4 秒時
+        // 將時間條變成紅色提醒玩家
+        if (timeLeft <= 4) {
+
+            // 紅色警告
+            timerBar.style.background = '#f44336';
+
+        } else {
+
+            // 時間充足時維持綠色
+            timerBar.style.background = '#4caf50';
+        }
+    }
+
+            // =========================
+    // 時間到的處理
+    // =========================
+    function handleTimeout() {
+
+        // 將遊戲狀態設為結束
+        gameActive = false;
+
+        // 判斷是哪一方超時
+        if (currentPlayer === 1) {
+
+            // 玩家超時，判定電腦獲勝
+            statusElement.innerText = "時間到！你輸了（電腦獲勝）❌";
+
+        } else {
+
+            // AI 超時，判定玩家獲勝
+            statusElement.innerText = "電腦思考超時！你贏了 🎉";
+        }
+    }
+
+    // =========================
+    // 玩家下棋
+    // =========================
+    function playerMove(r, c) {
+
+        // 如果格子已有棋子、遊戲已結束
+        // 或目前不是玩家回合，就不允許下棋
+        if (board[r][c] !== 0 || !gameActive || currentPlayer !== 1)
+            return;
+
+        // 在指定位置放置玩家的黑棋
+        executeMove(r, c, 1);
+
+        // 如果遊戲尚未結束，換 AI 下棋
+        if (gameActive) {
+
+            // 換成 AI 回合
+            currentPlayer = 2;
+
+            // 更新狀態文字
+            statusElement.innerText = "電腦思考中...";
+            aiLogElement.innerText = "";
+
+            // 玩家回合結束，停止玩家的倒數計時
+            clearInterval(timerInterval);
+
+            // 延遲 0.4 秒再讓 AI 下棋
+            // 增加遊戲的真實感，不會瞬間落子
+            setTimeout(aiMove, 400);
+        }
+    }
+
+    // =========================
+    // 執行下棋動作
+    // =========================
+    function executeMove(r, c, player) {
+
+        // 在棋盤陣列中記錄棋子
+        // 1 = 玩家(黑子)
+        // 2 = AI(白子)
+        board[r][c] = player;
+
+        // 記錄到回放清單（依下棋順序）
+        moveList.push({ r, c, player });
+
+        // 取得對應的棋盤格
+        const cell = document.getElementById(`cell-${r}-${c}`);
+
+        // 建立棋子元素
+        const piece = document.createElement('div');
+
+        // 根據玩家不同加入不同樣式
+        // 玩家 = black，AI = white
+        piece.classList.add('piece', player === 1 ? 'black' : 'white');
+
+        // 將棋子加入棋盤格中
+        cell.appendChild(piece);
+
+        saveHistory();
+
+        // 檢查這一步是否形成五子連線
+        if (checkWin(board, r, c, player)) {
+
+            // 若有人獲勝，停止倒數計時
+            clearInterval(timerInterval);
+
+            // 顯示獲勝者
+            statusElement.innerText =
+                `獲勝者是：${player === 1 ? '你（黑子）🎉' : '電腦（白子）🤖'}！`;
+
+            // 將遊戲狀態設為結束
+            gameActive = false;
+
+            // 結束函式
+            return;
+        }
+    }
+
+    // =================================================================
+    // 改進版 AI 邏輯
+    // 三層決策：1) 自己成五必贏  2) 擋人類成五  3) 綜合評分（活四/活三/開口）
+    // 評分依據「棋形」而非只看連線數量，能區分活四與死四、活三與眠三
+    // =================================================================
+
+    // 檢查 (r,c) 落子 player 是否成五
+    function checkWin(b, r, c, player) {
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        for (const [dr, dc] of dirs) {
+            let count = 1;
+            let nr = r + dr, nc = c + dc;
+            while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && b[nr][nc] === player) {
+                count++; nr += dr; nc += dc;
+            }
+            nr = r - dr; nc = c - dc;
+            while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && b[nr][nc] === player) {
+                count++; nr -= dr; nc -= dc;
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+
+    // 棋形評分表
+    // '1' = 我方、'0' = 空、'2' = 對方（此函式專門評估 '1' 的形狀）
+    const PATTERNS = [
+        ['11111', 1000000],   // 成五（必勝）
+        ['011110', 100000],   // 活四（兩端空，必勝）
+        ['11110', 50000], ['01111', 50000],   // 沖四（一端被堵，但下一步成五）
+        ['11011', 50000], ['10111', 50000], ['11101', 50000], // 跳四
+        ['001110', 1000], ['011100', 1000],   // 活三（能養成活四）
+        ['010110', 1000], ['011010', 1000],   // 跳活三
+        ['001112', 100], ['211100', 100],     // 眠三（一端被堵兩端其一）
+        ['010112', 100], ['211010', 100],
+        ['011012', 100], ['210110', 100],
+        ['001100', 100],                      // 活二
+        ['011000', 100], ['000110', 100],
+        ['010100', 10], ['001010', 10],       // 眠二
+    ];
+
+    // 評估一條線（字串陣列）中我方形狀的總分
+    function scoreLine(line) {
+        const s = line.join('');
+        let score = 0;
+        for (const [pat, val] of PATTERNS) {
+            let idx = 0;
+            while ((idx = s.indexOf(pat, idx)) !== -1) {
+                score += val;
+                idx += 1; // 允許重疊計分（一致性即可）
+            }
+        }
+        return score;
+    }
+
+    // 評估整盤棋盤中 player 的形勢分（沿四個方向掃描所有線段）
+    function evaluateBoard(b, player) {
+        const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        let total = 0;
+        for (const [dr, dc] of dirs) {
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    // 只從每條線的起點開始掃描，避免重複計分
+                    const pr = r - dr, pc = c - dc;
+                    if (pr >= 0 && pr < BOARD_SIZE && pc >= 0 && pc < BOARD_SIZE) continue;
+                    const line = [];
+                    let nr = r, nc = c;
+                    while (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE) {
+                        const v = b[nr][nc];
+                        line.push(v === player ? '1' : v === 0 ? '0' : '2');
+                        nr += dr; nc += dc;
+                    }
+                    total += scoreLine(line);
+                }
+            }
+        }
+        return total;
+    }
+
+    // 候選點：只考慮已有棋子周圍距離 2 內的空格（更快也更合理）
+    function getCandidates(b) {
+        const seen = new Set();
+        const cand = [];
+        let hasStone = false;
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                if (b[r][c] !== 0) {
+                    hasStone = true;
+                    for (let dr = -2; dr <= 2; dr++) {
+                        for (let dc = -2; dc <= 2; dc++) {
+                            const nr = r + dr, nc = c + dc;
+                            if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && b[nr][nc] === 0) {
+                                const key = nr * BOARD_SIZE + nc;
+                                if (!seen.has(key)) { seen.add(key); cand.push([nr, nc]); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!hasStone) return [[7, 7]];
+        return cand;
+    }
+
+    // AI(2) 決策：回傳 {r, c, why}
+    function findBestMove(b) {
+        const AI = 2, HUMAN = 1;
+        const cand = getCandidates(b);
+
+        // 第一層：自己成五必贏
+        for (const [r, c] of cand) {
+            b[r][c] = AI;
+            if (checkWin(b, r, c, AI)) { b[r][c] = 0; return { r, c, why: '成五獲勝' }; }
+            b[r][c] = 0;
+        }
+        // 第二層：擋人類成五
+        for (const [r, c] of cand) {
+            b[r][c] = HUMAN;
+            if (checkWin(b, r, c, HUMAN)) { b[r][c] = 0; return { r, c, why: '擋下人類成五' }; }
+            b[r][c] = 0;
+        }
+        // 第三層：綜合評分（進攻 + 防守），防守權重略高
+        let best = null, bestScore = -Infinity;
+        for (const [r, c] of cand) {
+            b[r][c] = AI;
+            const atk = evaluateBoard(b, AI);
+            b[r][c] = 0;
+            b[r][c] = HUMAN;
+            const def = evaluateBoard(b, HUMAN); // 人類在此處落子的威脅
+            b[r][c] = 0;
+            const combined = atk + def * 1.1;
+            if (combined > bestScore) { bestScore = combined; best = [r, c]; }
+        }
+        return { r: best[0], c: best[1], why: '綜合評分' };
+    }
+
+    // =========================
+    // AI 思考並下棋
+    // =========================
+    function aiMove() {
+
+        // 如果遊戲已經結束，就不再執行 AI 下棋
+        if (!gameActive) return;
+
+        // 用改進版邏輯找出最佳落子位置
+        const move = findBestMove(board);
+
+        // 在最佳位置放置白棋
+        executeMove(move.r, move.c, 2);
+
+        // 顯示 AI 這一手的理由（小字）
+        aiLogElement.innerText = `電腦下在 (${move.r}, ${move.c})：${move.why}`;
+
+        // 如果遊戲尚未結束，換玩家回合
+        if (gameActive) {
+
+            // 換回玩家
+            currentPlayer = 1;
+
+            // 更新狀態文字
+            statusElement.innerText = "輪到你了（黑子）";
+
+            // 重新開始玩家的 15 秒倒數
+            startTimer();
+        }
+    }
+
+    // =========================
+    // 重新開始遊戲
+    // =========================
+    function resetGame() {
+
+        // 停止目前的倒數計時
+        clearInterval(timerInterval);
+
+        // 建立新的 15×15 空棋盤
+        // 0 代表沒有棋子
+        board = Array(BOARD_SIZE)
+            .fill(null)
+            .map(() => Array(BOARD_SIZE).fill(0));
+
+        historyBoards = [];
+
+        moveList = [];
+
+        drawHistory();
+
+        // 重新設定由玩家（黑子）先下
+        currentPlayer = 1;
+
+        // 將遊戲狀態設為進行中
+        gameActive = true;
+
+        // 更新畫面提示文字
+        statusElement.innerText = "遊戲開始！你拿黑子，請下棋。";
+        aiLogElement.innerText = "";
+
+        // 重新建立空棋盤畫面
+        createBoard();
+
+        // 重新開始玩家的 15 秒倒數
+        startTimer();
+    }
+
+    // =========================
+    // 網頁初始化
+    // =========================
+
+    // 建立棋盤畫面
+    createBoard();
+
+    // 網頁載入完成後立即開始第一回合倒數
+    startTimer();
+
+    function saveHistory(){
+
+        // 複製目前棋盤
+        let copy = board.map(row=>[...row]);
+
+        historyBoards.push(copy);
+
+        // 只留最近5步
+        if(historyBoards.length > 5){
+            historyBoards.shift();
+        }
+
+        drawHistory();
+    }
+
+    function drawHistory(){
+
+        const area=document.getElementById("history");
+
+        area.innerHTML="";
+
+        historyBoards.forEach((oldBoard,index)=>{
+
+            let mini=document.createElement("div");
+
+            mini.className="history-board";
+
+            // 第5個 = 最新
+            if(index===historyBoards.length-1){
+                mini.classList.add("latest");
+            }
+
+            for(let r=0;r<15;r++){
+                for(let c=0;c<15;c++){
+                    let cell=document.createElement("div");
+                    cell.className="history-cell";
+
+                    if(oldBoard[r][c]===1){
+                        cell.classList.add("history-black");
+                    }
+
+                    if(oldBoard[r][c]===2){
+                        cell.classList.add("history-white");
+                    }
+
+                    mini.appendChild(cell);
+                }
+            }
+            let title=document.createElement("div");
+            title.innerText = "第 " + (index + 1) + " 步";
+
+            area.appendChild(title);
+            area.appendChild(mini);
+        });
+    }
+
+    // =================================================================
+    // 回放功能
+    // 把整盤棋按 moveList 的順序逐手重演；可播放/暫停/拖動滑桿
+    // =================================================================
+
+    // 回放狀態：目前顯示到第幾手（0 = 開局空盤）
+    let replayIndex = 0;
+    let replayTimer = null;   // 播放用的 setInterval 編號
+    let replayPlaying = false;
+
+    // 依 replayIndex 重繪棋盤（只畫前 replayIndex 手）
+    function renderReplay() {
+        // 先清掉棋盤上所有棋子（把每格的 .piece 移除）
+        const cells = document.querySelectorAll('#board .cell');
+        cells.forEach(cl => { const p = cl.querySelector('.piece'); if (p) cl.removeChild(p); });
+
+        // 依序落下前 replayIndex 手
+        for (let i = 0; i < replayIndex; i++) {
+            const mv = moveList[i];
+            const cell = document.getElementById(`cell-${mv.r}-${mv.c}`);
+            if (cell && !cell.querySelector('.piece')) {
+                const piece = document.createElement('div');
+                piece.classList.add('piece', mv.player === 1 ? 'black' : 'white');
+                cell.appendChild(piece);
+            }
+        }
+
+        // 更新滑桿與文字
+        const slider = document.getElementById('rp-slider');
+        const info = document.getElementById('rp-info');
+        slider.max = Math.max(0, moveList.length);
+        slider.value = replayIndex;
+        if (moveList.length === 0) {
+            info.innerText = '尚無棋步';
+        } else {
+            const who = replayIndex === 0 ? '開局' :
+                (moveList[replayIndex - 1].player === 1 ? '黑子(你)' : '白子(電腦)');
+            info.innerText = `第 ${replayIndex} / ${moveList.length} 手（${who}）`;
+        }
+    }
+
+    // 跳到指定手數
+    function replayTo(idx) {
+        replayIndex = Math.max(0, Math.min(idx, moveList.length));
+        renderReplay();
+    }
+
+    // 拖動滑桿
+    function replaySeek(val) {
+        stopReplayTimer();
+        replayPlaying = false;
+        updatePlayIcon();
+        replayTo(parseInt(val, 10));
+    }
+
+    // 播放 / 暫停切換
+    function replayToggle() {
+        if (moveList.length === 0) return;
+        if (replayPlaying) {
+            stopReplayTimer();
+            replayPlaying = false;
+        } else {
+            // 若已到最後一手，從頭播
+            if (replayIndex >= moveList.length) replayIndex = 0;
+            replayPlaying = true;
+            replayTimer = setInterval(() => {
+                if (replayIndex >= moveList.length) {
+                    stopReplayTimer();
+                    replayPlaying = false;
+                    updatePlayIcon();
+                    return;
+                }
+                replayIndex++;
+                renderReplay();
+            }, 600); // 每 0.6 秒下一手
+        }
+        updatePlayIcon();
+    }
+
+    function stopReplayTimer() {
+        if (replayTimer) { clearInterval(replayTimer); replayTimer = null; }
+    }
+
+    // 切換播放/暫停圖示（同步展開內的 rp-play 與把手上的 handle-play）
+    function updatePlayIcon() {
+        const icon = document.getElementById('rp-play-icon');
+        const btn = document.getElementById('handle-play');
+        if (replayPlaying) {
+            icon.innerHTML = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';  // ⏸
+            if (btn) btn.innerText = '⏸';
+        } else {
+            icon.innerHTML = '<path d="M8 5v14l11-7z"/>';            // ▶
+            if (btn) btn.innerText = '▶';
+        }
+    }
+
+    // 把手上的常駐播放/暫停鈕：收起態也能直接點
+    // 點擊 → 展開面板 + 切換播放；播完自動收回
+    function handlePlay() {
+        const rp = document.getElementById('sidepanel');
+        if (moveList.length === 0) return;          // 尚無棋步不動作
+        rp.style.maxHeight = '380px';               // 展開讓使用者看到縮圖/滑桿
+        replayToggle();                             // 切換播放/暫停
+        // 播放結束後 1.5 秒自動收回
+        const watch = setInterval(() => {
+            if (!replayPlaying) {
+                clearInterval(watch);
+                setTimeout(() => { rp.style.maxHeight = ''; }, 1500);
+            }
+        }, 400);
+    }
+
+    // 點工具列的回放圖示：自動展開並播放，播完後自動收回
+    function focusReplay() {
+        const rp = document.getElementById('sidepanel');
+        stopReplayTimer();
+        replayPlaying = false;
+        updatePlayIcon();
+        replayTo(0);
+        rp.style.maxHeight = '380px';   // 強制展開
+        replayToggle();                 // 開始播放
+        // 播放結束後 1.5 秒自動收回（滑鼠移開後維持收起）
+        const watch = setInterval(() => {
+            if (!replayPlaying) {
+                clearInterval(watch);
+                setTimeout(() => { rp.style.maxHeight = ''; }, 1500);
+            }
+        }, 400);
+    }
+
+    // 初始化回放面板
+    renderReplay();
+
+    </script>
+</body>
+</html>
