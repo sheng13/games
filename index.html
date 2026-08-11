@@ -186,12 +186,25 @@
         }
         .tool-btn:hover { background: #eef3ff; transform: translateY(-1px); }
         .tool-btn:active { transform: translateY(1px); }
+
+        .mode-picker {
+            display:flex;
+            align-items:center;
+            gap:6px;
+            font-weight:bold;
+        }
+        .mode-picker select {
+            padding:8px 10px;
+            border:1px solid #9badff;
+            border-radius:8px;
+            background:#fff;
+        }
         .tool-btn svg { width: 26px; height: 26px; fill: #333; }
 
         /* 棋盤容器：grid 三欄，棋盤居中，歷史/回放與棋盤頂部對齊 */
         #game-container{
             display:grid;
-            grid-template-columns: 160px auto 160px;
+            grid-template-columns: 240px auto 240px;
             align-items:start;            /* 頂部對齊 */
             justify-content:center;
             gap:8px;
@@ -199,7 +212,7 @@
         }
 
         /* 左側占位（保持棋盤居中用） */
-        #left-spacer{ width:160px; }
+        #left-spacer{ width:240px; }
 
         /* 右側：歷史 + 回放 都放進一個 wrapper，垂直堆疊，頂部與棋盤對齊 */
         #right-panel{
@@ -216,7 +229,7 @@
             flex-direction:column;
             gap:6px;
             padding:8px;
-            width:160px;
+            width:100%;
             box-sizing:border-box;
             background:#ffffff;
             border:2px solid #aaa;
@@ -244,20 +257,16 @@
             border:2px solid red;
         }
 
-        /* 統一可伸縮面板：歷史縮圖 + 回放控制，預設收成窄把手，hover 展開 */
+        /* 固定回放面板：不再依赖 hover，也不会自动收起 */
         #sidepanel{
-            width:160px;
+            width:240px;
             box-sizing:border-box;
             border:2px solid #6a8cff;
             border-radius:10px;
             background:#f7f9ff;
             box-shadow:0 3px 8px rgba(0,0,0,0.15);
-            overflow:hidden;
-            max-height:34px;             /* 收起時只留把手高度 */
-            transition:max-height 0.25s ease;
-        }
-        #sidepanel:hover{
-            max-height:380px;            /* 展開（含縮圖+控制） */
+            overflow:visible;
+            max-height:none;
         }
         #sidepanel .sidepanel-handle{
             display:flex;
@@ -306,16 +315,19 @@
             gap:10px;
         }
         #sidepanel .replay-controls{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            gap:10px;
+            display:grid;
+            grid-template-columns:repeat(3, 1fr);
+            gap:6px;
         }
         #sidepanel .rp-btn{
-            border:none;
-            background:transparent;
+            border:1px solid #9badff;
+            border-radius:6px;
+            background:#fff;
+            color:#2947b8;
             cursor:pointer;
-            padding:2px;
+            padding:6px 4px;
+            font-size:12px;
+            margin:0;
         }
         #sidepanel .rp-btn svg{ width:24px; height:24px; fill:#3a5bd0; }
         #sidepanel .rp-btn:disabled{ opacity:0.3; cursor:default; }
@@ -365,6 +377,12 @@
 
     <!-- 頂部工具列：圖示按鈕取代純文字按鈕 -->
     <div id="toolbar">
+        <label class="mode-picker">模式
+            <select id="game-mode" onchange="resetGame()">
+                <option value="ai">人机对战</option>
+                <option value="local">本地双人</option>
+            </select>
+        </label>
         <!-- 重新開始（重玩圖示） -->
         <button class="tool-btn" onclick="resetGame()" title="重新開始">
             <svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
@@ -401,15 +419,14 @@
                 <div id="history"></div>
                 <!-- 回放控制 -->
                 <div class="replay-controls">
-                    <button class="rp-btn" id="rp-restart" onclick="replayTo(0)" title="到開頭">
-                        <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3 6l9 6V6z"/></svg>
-                    </button>
-                    <button class="rp-btn" id="rp-play" onclick="replayToggle()" title="播放/暫停">
+                    <button class="rp-btn" onclick="replayTo(0)">⏮ 开头</button>
+                    <button class="rp-btn" onclick="replayStep(-1)">◀ 上一手</button>
+                    <button class="rp-btn" id="rp-play" onclick="replayToggle()">
                         <svg id="rp-play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     </button>
-                    <button class="rp-btn" onclick="replayStep(-1)" title="上一步">◀</button>
-                    <button class="rp-btn" onclick="replayStep(1)" title="下一步">▶</button>
-                    <button class="rp-btn" onclick="exitReplay()" title="返回棋局">↩</button>
+                    <button class="rp-btn" onclick="replayStep(1)">下一手 ▶</button>
+                    <button class="rp-btn" onclick="replayTo(moveList.length)">末尾 ⏭</button>
+                    <button class="rp-btn" onclick="exitReplay()">↩ 返回棋局</button>
                 </div>
                 <input type="range" id="rp-slider" min="0" max="0" value="0" oninput="replaySeek(this.value)">
                 <div class="rp-info" id="rp-info">尚無棋步</div>
@@ -457,6 +474,7 @@
     // false = 遊戲結束
     let gameActive = true;
     let gamePaused = false;
+    let gameMode = 'ai';
 
     // =========================
     // 計時器相關變數
@@ -596,16 +614,13 @@
         // 將遊戲狀態設為結束
         gameActive = false;
 
-        // 判斷是哪一方超時
-        if (currentPlayer === humanPlayer) {
-
-            // 玩家超時，判定電腦獲勝
-            statusElement.innerText = "時間到！你輸了（電腦獲勝）❌";
-
+        if (gameMode === 'local') {
+            const winner = currentPlayer === 1 ? '白方' : '黑方';
+            statusElement.innerText = `时间到！${winner}获胜。`;
+        } else if (currentPlayer === humanPlayer) {
+            statusElement.innerText = '时间到！电脑获胜。';
         } else {
-
-            // AI 超時，判定玩家獲勝
-            statusElement.innerText = "電腦思考超時！你贏了 🎉";
+            statusElement.innerText = '电脑思考超时！你获胜。';
         }
     }
 
@@ -613,31 +628,23 @@
     // 玩家下棋
     // =========================
     function playerMove(r, c) {
+        if (gamePaused || replayMode || !gameActive || board[r][c] !== 0) return;
 
-        if (gamePaused || replayMode) return;
-        // 如果格子已有棋子、遊戲已結束
-        // 或目前不是玩家回合，就不允許下棋
-        if (board[r][c] !== 0 || !gameActive || currentPlayer !== humanPlayer)
-            return;
+        // 人机模式只允许在人类回合点击；双人模式则由当前颜色落子
+        if (gameMode === 'ai' && currentPlayer !== humanPlayer) return;
+        const movingPlayer = gameMode === 'local' ? currentPlayer : humanPlayer;
+        executeMove(r, c, movingPlayer);
+        if (!gameActive) return;
 
-        // 在指定位置放置玩家的黑棋
-        executeMove(r, c, humanPlayer);
-
-        // 如果遊戲尚未結束，換 AI 下棋
-        if (gameActive) {
-
-            // 換成 AI 回合
+        clearInterval(timerInterval);
+        if (gameMode === 'local') {
+            currentPlayer = movingPlayer === 1 ? 2 : 1;
+            statusElement.innerText = `轮到${currentPlayer === 1 ? '黑方' : '白方'}落子`;
+            startTimer();
+        } else {
             currentPlayer = aiPlayer;
-
-            // 更新狀態文字
-            statusElement.innerText = "電腦思考中...";
-            aiLogElement.innerText = "";
-
-            // 玩家回合結束，停止玩家的倒數計時
-            clearInterval(timerInterval);
-
-            // 延遲 0.4 秒再讓 AI 下棋
-            // 增加遊戲的真實感，不會瞬間落子
+            statusElement.innerText = '电脑思考中...';
+            aiLogElement.innerText = '';
             setTimeout(aiMove, 400);
         }
     }
@@ -677,8 +684,10 @@
             clearInterval(timerInterval);
 
             // 顯示獲勝者
-            statusElement.innerText =
-                `获胜者是：${player === humanPlayer ? '你' : '电脑'}（${player === 1 ? '黑子' : '白子'}）！`;
+            const color = player === 1 ? '黑方' : '白方';
+            statusElement.innerText = gameMode === 'local'
+                ? `${color}获胜！`
+                : `获胜者：${player === humanPlayer ? '你' : '电脑'}（${color}）！`;
 
             // 將遊戲狀態設為結束
             gameActive = false;
@@ -858,7 +867,7 @@
     // 暂停或继续实际对局；AI 思考期间先等 AI 落子完成
     function toggleGamePause() {
         if (!gameActive || replayMode) return;
-        if (currentPlayer === aiPlayer) {
+        if (gameMode === 'ai' && currentPlayer === aiPlayer) {
             statusElement.innerText = '电脑思考中，请稍后暂停。';
             return;
         }
@@ -872,7 +881,9 @@
             icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
             button.title = '继续游戏';
         } else {
-            statusElement.innerText = '轮到你了（黑子）';
+            statusElement.innerText = gameMode === 'local'
+                ? `轮到${currentPlayer === 1 ? '黑方' : '白方'}落子`
+                : `轮到你了（${humanPlayer === 1 ? '黑子' : '白子'}）`;
             icon.innerHTML = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
             button.title = '暂停游戏';
             startTimer(false);
@@ -908,25 +919,27 @@
 
         drawHistory();
 
-        // 每局随机分配玩家颜色，但黑棋（数值 1）永远先手
-        humanPlayer = Math.random() < 0.5 ? 1 : 2;
+        gameMode = document.getElementById('game-mode').value;
+        // 人机模式随机颜色；本地双人固定由黑方先手
+        humanPlayer = gameMode === 'ai' && Math.random() < 0.5 ? 1 : 2;
         aiPlayer = humanPlayer === 1 ? 2 : 1;
         currentPlayer = 1;
 
         // 將遊戲狀態設為進行中
         gameActive = true;
 
-        // 显示本局随机分配结果
         const humanColor = humanPlayer === 1 ? '黑子' : '白子';
-        statusElement.innerText = `本局你拿${humanColor}。`;
-        aiLogElement.innerText = '';
+        statusElement.innerText = gameMode === 'local'
+            ? '本地双人：黑方先手。'
+            : `本局你拿${humanColor}。`;
+        aiLogElement.innerText = gameMode === 'local' ? '两位玩家在同一设备轮流落子' : '';
 
         // 重新建立空棋盤畫面
         createBoard();
 
-        // 黑棋先手；若电脑抽到黑棋，就由电脑自动下第一手
-        if (currentPlayer === humanPlayer) {
-            statusElement.innerText += ' 请下棋。';
+        // 本地双人或玩家抽到黑棋时直接开始；否则电脑先手
+        if (gameMode === 'local' || currentPlayer === humanPlayer) {
+            if (gameMode === 'ai') statusElement.innerText += ' 请下棋。';
             startTimer();
         } else {
             statusElement.innerText += ' 电脑先手。';
@@ -1014,7 +1027,7 @@
     // 进入回放时暂停真实对局，避免计时与落子继续在背景运行
     function enterReplay() {
         if (moveList.length === 0) return false;
-        if (gameActive && currentPlayer === aiPlayer) {
+        if (gameMode === 'ai' && gameActive && currentPlayer === aiPlayer) {
             statusElement.innerText = '电脑思考中，请稍后回放。';
             return false;
         }
@@ -1042,7 +1055,7 @@
         statusElement.innerText = statusBeforeReplay;
         aiLogElement.innerText = aiLogBeforeReplay;
         document.getElementById('sidepanel').style.maxHeight = '';
-        if (gameActive && !gamePaused && currentPlayer === humanPlayer) {
+        if (gameActive && !gamePaused && (gameMode === 'local' || currentPlayer === humanPlayer)) {
             startTimer(false);
         }
     }
