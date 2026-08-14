@@ -62,7 +62,7 @@
 
         /* 時間條外框 */
         #timer-container {
-            width: 464px;          /* 寬度 */
+            width: min(464px, 92vw); /* 随屏幕自动缩放 */
             height: 12px;          /* 高度 */
             background: #ddd;      /* 灰色背景 */
             margin: 10px auto;     /* 水平置中 */
@@ -87,9 +87,10 @@
            ========================= */
 
         #board {
+            --board-cell: clamp(18px, 5.7vw, 30px);
             display: grid;                         /* 使用 Grid 排版 */
-            grid-template-columns: repeat(15,30px); /* 15 欄 */
-            grid-template-rows: repeat(15,30px);    /* 15 列 */
+            grid-template-columns: repeat(15,var(--board-cell)); /* 15 欄 */
+            grid-template-rows: repeat(15,var(--board-cell));    /* 15 列 */
             gap: 0;                                /* 让网格线连续 */
             background: #e9c48b;                   /* 木质棋盘底色 */
             padding: 12px;
@@ -125,8 +126,9 @@
         .piece {
             position: relative;
             z-index: 2;
-            width: 26px;
-            height: 26px;
+            width: 86%;
+            height: 86%;
+            aspect-ratio: 1;
             border-radius: 50%;       /* 圓形 */
             box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
         }
@@ -246,15 +248,47 @@
             background:#d1a153;
             padding:3px;
             border-radius:4px;
-            transition:0.2s;
+            transition:transform 0.22s ease, box-shadow 0.22s ease;
+            transform-origin:right center;
+            position:relative;
             cursor:pointer;
         }
-        .history-board:hover{ transform:scale(1.4); }
+        .history-board:hover{
+            box-shadow:0 4px 12px rgba(0,0,0,0.3);
+        }
         .history-board.latest{
             grid-template-columns:repeat(15,6px);
             grid-template-rows:repeat(15,6px);
             transform:scale(1.05);
             border:2px solid red;
+        }
+        .history-board.latest:hover{ transform:scale(1.05); }
+        .history-preview{
+            position:fixed;
+            z-index:5000;
+            display:grid;
+            grid-template-columns:repeat(15,16px);
+            grid-template-rows:repeat(15,16px);
+            gap:1px;
+            padding:10px;
+            width:max-content;
+            background:#d1a153;
+            border:3px solid #6a4520;
+            border-radius:10px;
+            box-shadow:0 16px 42px rgba(0,0,0,.5);
+            pointer-events:none;
+        }
+        .history-preview .history-cell{
+            width:16px;
+            height:16px;
+            border:1px solid rgba(111,78,36,.25);
+        }
+        @media (max-width:700px){
+            .history-preview{
+                grid-template-columns:repeat(15,12px);
+                grid-template-rows:repeat(15,12px);
+            }
+            .history-preview .history-cell{width:12px;height:12px;}
         }
 
         /* 固定回放面板：不再依赖 hover，也不会自动收起 */
@@ -265,8 +299,9 @@
             border-radius:10px;
             background:#f7f9ff;
             box-shadow:0 3px 8px rgba(0,0,0,0.15);
-            overflow:visible;
-            max-height:none;
+            overflow:hidden;
+            height:478px;              /* 与 15×15 主棋盘外框高度一致 */
+            max-height:478px;
         }
         #sidepanel .sidepanel-handle{
             display:flex;
@@ -313,6 +348,14 @@
             display:flex;
             flex-direction:column;
             gap:10px;
+            max-height:430px;
+            overflow-y:auto;
+            overflow-x:hidden;
+            scrollbar-width:thin;
+        }
+        @media (max-width: 700px) {
+            #sidepanel { height:min(478px, 80vh); }
+            #sidepanel .sidepanel-body { max-height:calc(min(478px, 80vh) - 48px); }
         }
         #sidepanel .replay-controls{
             display:grid;
@@ -348,11 +391,42 @@
             border-radius:50%;
         }
 
+
+        .lobby-back {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            padding: 10px 16px;
+            color: #fff;
+            background: #24324a;
+            border-radius: 999px;
+            text-decoration: none;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0,0,0,.25);
+        }
+        .lobby-back:hover { background: #344b70; }
+        @media (max-width: 900px) {
+            body { padding: 12px; overflow-x: hidden; }
+            h1 { font-size: clamp(24px, 7vw, 34px); }
+            #toolbar { flex-wrap: wrap; gap: 8px; }
+            #game-container { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+            #left-spacer { display: none; }
+            #right-panel { width: min(478px, calc(100vw - 24px)); margin: 0 auto; }
+            #sidepanel { width: 100%; height: min(360px, 55vh); }
+            #sidepanel .sidepanel-body { max-height: calc(min(360px, 55vh) - 48px); }
+        }
+        @media (max-width: 600px) {
+            .lobby-back { position: static; align-self: flex-start; margin-bottom: 8px; }
+            #board { padding: 8px; }
+            .piece { width: 84%; height: 84%; }
+        }
     </style>
     <!-- CSS 樣式結束 -->
 
 </head>
 <body>
+    <a class="lobby-back" href="/">← 返回游戏大厅</a>
 
        <!-- 網頁主標題 -->
     <h1>五子棋（限時人機戰）· 改進版</h1>
@@ -381,6 +455,11 @@
             <select id="game-mode" onchange="resetGame()">
                 <option value="ai">人机对战</option>
                 <option value="local">本地双人</option>
+            </select>
+        </label>
+        <label class="mode-picker" id="difficulty-wrap">难度
+            <select id="ai-difficulty" onchange="resetGame()">
+                <option value="easy">简单</option><option value="normal" selected>普通</option><option value="hard">困难</option>
             </select>
         </label>
         <!-- 重新開始（重玩圖示） -->
@@ -475,6 +554,7 @@
     let gameActive = true;
     let gamePaused = false;
     let gameMode = 'ai';
+    let aiDifficulty = 'normal';
 
     // =========================
     // 計時器相關變數
@@ -805,6 +885,10 @@
     function findBestMove(b) {
         const AI = aiPlayer, HUMAN = humanPlayer;
         const cand = getCandidates(b);
+        if (aiDifficulty === 'easy') {
+            const pick = cand[Math.floor(Math.random() * cand.length)];
+            return { r: pick[0], c: pick[1], why: '随机尝试' };
+        }
 
         // 第一層：自己成五必贏
         for (const [r, c] of cand) {
@@ -818,7 +902,16 @@
             if (checkWin(b, r, c, HUMAN)) { b[r][c] = 0; return { r, c, why: '擋下人類成五' }; }
             b[r][c] = 0;
         }
-        // 第三層：綜合評分（進攻 + 防守），防守權重略高
+        // 普通难度在安全候选中加入随机性；困难难度选择最高综合评分
+        if (aiDifficulty === 'normal' && cand.length > 1) {
+            const nearby = cand.map(([r,c]) => {
+                b[r][c] = AI; const atk = evaluateBoard(b, AI); b[r][c] = 0;
+                b[r][c] = HUMAN; const def = evaluateBoard(b, HUMAN); b[r][c] = 0;
+                return {r,c,score:atk + def};
+            }).sort((a,b) => b.score-a.score).slice(0, Math.min(5,cand.length));
+            const pick = nearby[Math.floor(Math.random()*nearby.length)];
+            return {r:pick.r,c:pick.c,why:'攻防判断'};
+        }
         let best = null, bestScore = -Infinity;
         for (const [r, c] of cand) {
             b[r][c] = AI;
@@ -920,6 +1013,8 @@
         drawHistory();
 
         gameMode = document.getElementById('game-mode').value;
+        aiDifficulty = document.getElementById('ai-difficulty').value;
+        document.getElementById('difficulty-wrap').style.display = gameMode === 'ai' ? 'flex' : 'none';
         // 人机模式随机颜色；本地双人固定由黑方先手
         humanPlayer = gameMode === 'ai' && Math.random() < 0.5 ? 1 : 2;
         aiPlayer = humanPlayer === 1 ? 2 : 1;
@@ -1006,6 +1101,25 @@
 
             area.appendChild(title);
             area.appendChild(mini);
+
+            // 使用独立浮层显示大预览，避免被回放面板的滚动区域裁切
+            mini.addEventListener('mouseenter', () => {
+                document.querySelector('.history-preview')?.remove();
+                const preview = mini.cloneNode(true);
+                preview.className = 'history-preview';
+                document.body.appendChild(preview);
+                const rect = mini.getBoundingClientRect();
+                const previewRect = preview.getBoundingClientRect();
+                const gap = 14;
+                let left = rect.left - previewRect.width - gap;
+                if (left < 8) left = Math.min(window.innerWidth - previewRect.width - 8, rect.right + gap);
+                const top = Math.max(8, Math.min(rect.top, window.innerHeight - previewRect.height - 8));
+                preview.style.left = `${Math.max(8, left)}px`;
+                preview.style.top = `${top}px`;
+            });
+            mini.addEventListener('mouseleave', () => {
+                document.querySelector('.history-preview')?.remove();
+            });
         });
     }
 
