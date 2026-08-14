@@ -1,0 +1,4 @@
+include:
+  - project: root/ci-templates
+    ref: main
+    file: /universal.yml
