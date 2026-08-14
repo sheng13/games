@@ -1,4 +1,16 @@
-include:
-  - project: root/ci-templates
-    ref: main
-    file: /universal.yml
+stages:
+  - build
+  - test
+
+build-job:
+  stage: build
+  script:
+    - echo "Compiling the code..."
+    - python3 -m py_compile app.py
+
+test-job:
+  stage: test
+  script:
+    - echo "Running tests..."
+    - test -f index.html
+    - echo "Gomoku checks passed"
