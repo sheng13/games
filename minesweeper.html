@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>霓虹扫雷</title>
+<style>
+:root{--page:#070b18;--panel:#0f172ae8;--text:#f8fafc;--muted:#aebbd0;--line:#ffffff25;--cyan:#67e8f9;--purple:#a78bfa}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;padding:22px 18px 34px;font-family:system-ui,"Microsoft YaHei",sans-serif;color:var(--text);background:radial-gradient(circle at 15% 15%,#3730a3,transparent 34%),radial-gradient(circle at 85% 80%,#155e75,transparent 32%),var(--page);display:flex;justify-content:center;overscroll-behavior:none}
+button,select{font:inherit}
+.page{width:min(940px,100%)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.back{color:#dbeafe;text-decoration:none;padding:10px 15px;border:1px solid var(--line);border-radius:999px;background:#0f172aa8}
+.back:hover{border-color:var(--cyan)}
+h1{font-size:clamp(25px,4vw,38px);margin:0}
+.subtitle{color:var(--muted);margin:4px 0 0;text-align:right}
+.shell{display:grid;grid-template-columns:minmax(300px,640px) minmax(220px,1fr);gap:22px;align-items:start}
+.panel,.side{background:var(--panel);border:1px solid var(--line);border-radius:26px;box-shadow:0 22px 60px #0007}
+.panel{padding:16px;overflow-x:auto}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px}
+.stat{padding:8px 4px;text-align:center;background:#ffffff0b;border:1px solid var(--line);border-radius:14px}
+.stat span{display:block;font-size:11px;color:var(--muted)}
+.stat strong{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.board-container{position:relative;display:flex;justify-content:center;margin:0 auto;padding:10px;background:#050918;border-radius:18px;border:1px solid #67e8f944;min-height:300px}
+.grid{display:grid;gap:4px;user-select:none;-webkit-user-select:none}
+.cell{width:32px;height:32px;border-radius:6px;background:#ffffff12;border:1px solid #ffffff1a;display:grid;place-items:center;font-weight:900;font-size:15px;cursor:pointer;transition:background .12s,transform .1s}
+.cell:hover{background:#ffffff25;border-color:var(--cyan)}
+.cell.revealed{background:#020617;border-color:#ffffff0a;cursor:default}
+.cell.flagged{background:#3b0764;border-color:#a855f7}
+.cell.mine{background:#881337;border-color:#f43f5e}
+.n1{color:#67e8f9;text-shadow:0 0 6px #06b6d488}
+.n2{color:#4ade80;text-shadow:0 0 6px #22c55e88}
+.n3{color:#f87171;text-shadow:0 0 6px #ef444488}
+.n4{color:#c084fc;text-shadow:0 0 6px #a855f788}
+.n5{color:#fb923c;text-shadow:0 0 6px #f9731688}
+.n6{color:#2dd4bf;text-shadow:0 0 6px #14b8a688}
+.n7{color:#f472b6;text-shadow:0 0 6px #ec489988}
+.n8{color:#facc15;text-shadow:0 0 6px #eab30888}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:24px;background:#050918bd;backdrop-filter:blur(4px);text-align:center;z-index:5;border-radius:18px}
+.overlay[hidden]{display:none}
+.overlay h2{font-size:30px;margin:0 0 8px}
+.overlay p{color:#cbd5e1;line-height:1.6;margin:0 0 18px;font-size:14px}
+.primary{border:0;border-radius:999px;padding:12px 26px;color:#07111f;background:linear-gradient(135deg,var(--cyan),var(--purple));font-weight:900;cursor:pointer}
+.side{padding:22px}
+.side h2{font-size:19px;margin:0 0 14px}
+.field{display:grid;gap:7px;margin-bottom:18px}
+.field label,.tip{color:var(--muted);font-size:14px}
+.field select{padding:11px;border-radius:12px;border:1px solid var(--line);background:#111c33;color:var(--text)}
+.actions{display:grid;grid-template-columns:1fr;gap:9px}
+.secondary{padding:11px;border-radius:12px;border:1px solid var(--line);background:#ffffff0a;color:var(--text);font-weight:700;cursor:pointer}
+.flag-toggle{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:14px;border:1px solid var(--line);background:#ffffff0d;margin-top:14px;cursor:pointer;user-select:none}
+.flag-toggle.active{background:#a855f733;border-color:#c084fc}
+.tip{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;line-height:1.7}
+.live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media(max-width:760px){
+  body{padding:14px 11px}
+  .subtitle{display:none}
+  .shell{grid-template-columns:1fr}
+  .cell{width:28px;height:28px;font-size:13px}
+}
+</style></head><body><main class="page"><header class="top"><a class="back" href="/">← 游戏大厅</a><div><h1>💣 霓虹扫雷</h1><p class="subtitle">推算地雷位置，避开陷阱翻开所有安全区域</p></div></header><section class="shell"><div class="panel"><div class="stats"><div class="stat"><span>剩余地雷</span><strong id="minesLeft">10</strong></div><div class="stat"><span>时间</span><strong id="timer">0</strong></div><div class="stat"><span>最佳时间</span><strong id="bestTime">--</strong></div></div><div class="board-container"><div class="grid" id="grid" role="grid"></div><div class="overlay" id="overlay"><div><h2 id="overlayTitle">准备好了吗？</h2><p id="overlayText">点击方块翻开，右键或开启插旗模式标记地雷。</p><button class="primary" id="startBtn">开始游戏</button></div></div></div></div><aside class="side"><h2>游戏设置</h2><div class="field"><label for="diffSelect">选择难度</label><select id="diffSelect"><option value="easy" selected>初级 (9 × 9, 10雷)</option><option value="medium">中级 (16 × 16, 40雷)</option><option value="hard">高级 (20 × 16, 60雷)</option></select></div><div class="flag-toggle" id="flagModeBtn"><span>🚩 移动端插旗模式：</span><strong id="flagModeState">关</strong></div><div class="actions" style="margin-top:14px"><button class="secondary" id="restartBtn">重新开始</button></div><div class="tip"><strong>玩法技巧：</strong><br>• 数字代表周围 8 个方块中的地雷数量。<br>• 首次点击必定安全。<br>• 双击已翻开数字可快速展开周围未标记区域。</div></aside></section><p class="live" id="announcement" aria-live="polite"></p></main>
+<script>
+const gridEl=document.querySelector('#grid'), minesLeftEl=document.querySelector('#minesLeft'), timerEl=document.querySelector('#timer'), bestTimeEl=document.querySelector('#bestTime');
+const overlay=document.querySelector('#overlay'), overlayTitle=document.querySelector('#overlayTitle'), overlayText=document.querySelector('#overlayText'), startBtn=document.querySelector('#startBtn');
+const diffSelect=document.querySelector('#diffSelect'), flagModeBtn=document.querySelector('#flagModeBtn'), flagModeState=document.querySelector('#flagModeState'), restartBtn=document.querySelector('#restartBtn'), announcement=document.querySelector('#announcement');
+
+const CONFIGS = {
+  easy: { rows: 9, cols: 9, mines: 10, cellSize: 32 },
+  medium: { rows: 16, cols: 16, mines: 40, cellSize: 28 },
+  hard: { rows: 16, cols: 20, mines: 60, cellSize: 26 }
+};
+
+let board, rows, cols, totalMines, flagMode = false, firstClick = true, timer = 0, timerInterval = null, state = 'ready';
+
+function getBestKey() { return `neonMinesweeperBest_${diffSelect.value}`; }
+
+function updateBestDisplay() {
+  const b = localStorage.getItem(getBestKey());
+  bestTimeEl.textContent = b ? `${b}s` : '--';
+}
+
+function initGame() {
+  clearInterval(timerInterval);
+  const cfg = CONFIGS[diffSelect.value];
+  rows = cfg.rows; cols = cfg.cols; totalMines = cfg.mines;
+  firstClick = true; timer = 0; state = 'ready';
+  timerEl.textContent = '0';
+  minesLeftEl.textContent = totalMines;
+  updateBestDisplay();
+
+  // Build grid
+  board = Array.from({length: rows}, () => Array.from({length: cols}, () => ({
+    mine: false, revealed: false, flagged: false, count: 0
+  })));
+
+  renderBoard();
+  showOverlay('准备好了吗？', '点击方块翻开，右键或开启插旗模式标记地雷。', '开始游戏');
+}
+
+function plantMines(safeR, safeC) {
+  let planted = 0;
+  while (planted < totalMines) {
+    let r = Math.floor(Math.random() * rows);
+    let c = Math.floor(Math.random() * cols);
+    if (!board[r][c].mine && !(Math.abs(r - safeR) <= 1 && Math.abs(c - safeC) <= 1)) {
+      board[r][c].mine = true;
+      planted++;
+    }
+  }
+
+  // Calculate neighbor counts
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c].mine) continue;
+      let cnt = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          let nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].mine) cnt++;
+        }
+      }
+      board[r][c].count = cnt;
+    }
+  }
+}
+
+function renderBoard() {
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  gridEl.innerHTML = '';
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cellEl = document.createElement('div');
+      cellEl.className = 'cell';
+      cellEl.dataset.r = r; cellEl.dataset.c = c;
+
+      const item = board[r][c];
+      if (item.revealed) {
+        cellEl.classList.add('revealed');
+        if (item.mine) {
+          cellEl.classList.add('mine');
+          cellEl.textContent = '💣';
+        } else if (item.count > 0) {
+          cellEl.classList.add(`n${item.count}`);
+          cellEl.textContent = item.count;
+        }
+      } else if (item.flagged) {
+        cellEl.classList.add('flagged');
+        cellEl.textContent = '🚩';
+      }
+
+      cellEl.oncontextmenu = e => { e.preventDefault(); handleFlag(r, c); };
+      cellEl.onclick = () => {
+        if (flagMode) handleFlag(r, c);
+        else handleReveal(r, c);
+      };
+      cellEl.ondblclick = () => handleChording(r, c);
+
+      gridEl.appendChild(cellEl);
+    }
+  }
+}
+
+function handleReveal(r, c) {
+  if (state === 'over' || state === 'won') return;
+  const item = board[r][c];
+  if (item.flagged || item.revealed) return;
+
+  if (firstClick) {
+    firstClick = false;
+    plantMines(r, c);
+    startTimer();
+    state = 'playing';
+    overlay.hidden = true;
+  }
+
+  if (item.mine) {
+    gameOver(r, c);
+    return;
+  }
+
+  // Flood fill reveal
+  revealEmpty(r, c);
+  renderBoard();
+  checkWin();
+}
+
+function revealEmpty(r, c) {
+  if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+  const item = board[r][c];
+  if (item.revealed || item.flagged) return;
+
+  item.revealed = true;
+  if (item.count === 0 && !item.mine) {
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr !== 0 || dc !== 0) revealEmpty(r + dr, c + dc);
+      }
+    }
+  }
+}
+
+function handleFlag(r, c) {
+  if (state === 'over' || state === 'won') return;
+  const item = board[r][c];
+  if (item.revealed) return;
+
+  item.flagged = !item.flagged;
+  updateMinesLeft();
+  renderBoard();
+}
+
+function handleChording(r, c) {
+  if (state !== 'playing') return;
+  const item = board[r][c];
+  if (!item.revealed || item.count === 0) return;
+
+  // Count flags around
+  let flagCount = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      let nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].flagged) flagCount++;
+    }
+  }
+
+  if (flagCount === item.count) {
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        let nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+          if (!board[nr][nc].flagged && !board[nr][nc].revealed) {
+            handleReveal(nr, nc);
+          }
+        }
+      }
+    }
+  }
+}
+
+function updateMinesLeft() {
+  let flags = 0;
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (board[r][c].flagged) flags++;
+  minesLeftEl.textContent = totalMines - flags;
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timer++;
+    timerEl.textContent = timer;
+  }, 1000);
+}
+
+function checkWin() {
+  let unrevealedSafe = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!board[r][c].mine && !board[r][c].revealed) unrevealedSafe++;
+    }
+  }
+
+  if (unrevealedSafe === 0) {
+    state = 'won';
+    clearInterval(timerInterval);
+    const key = getBestKey();
+    const currentBest = localStorage.getItem(key);
+    if (!currentBest || timer < Number(currentBest)) {
+      localStorage.setItem(key, String(timer));
+      updateBestDisplay();
+    }
+    showOverlay('扫雷成功！🎉', `用时 ${timer} 秒完成关卡。`, '再玩一局');
+    announcement.textContent = `恭喜胜利！用时 ${timer} 秒`;
+  }
+}
+
+function gameOver(hitR, hitC) {
+  state = 'over';
+  clearInterval(timerInterval);
+  // Reveal all mines
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (board[r][c].mine) board[r][c].revealed = true;
+    }
+  }
+  renderBoard();
+  showOverlay('踩雷啦！💥', '地雷触发，下次小心！', '重新挑战');
+  announcement.textContent = '踩到地雷，游戏结束';
+}
+
+function showOverlay(title, text, buttonText) {
+  overlayTitle.textContent = title;
+  overlayText.textContent = text;
+  startBtn.textContent = buttonText;
+  overlay.hidden = false;
+}
+
+startBtn.onclick = () => {
+  overlay.hidden = true;
+  if (state === 'over' || state === 'won') initGame();
+};
+
+flagModeBtn.onclick = () => {
+  flagMode = !flagMode;
+  flagModeBtn.classList.toggle('active', flagMode);
+  flagModeState.textContent = flagMode ? '开 (点击即标记)' : '关 (点击即翻开)';
+};
+
+diffSelect.onchange = initGame;
+restartBtn.onclick = initGame;
+
+initGame();
+</script></body></html>

@@ -4,3 +4,14 @@ __pycache__/
 *.pyc
 Gomoku-Versions/
 hermes-ollama-qwen/
+
+# Deployment-only files and large binary deliverables.
+.env.*
+!.env.example
+/releases/
+*.exe
+*.msi
+*.zip
+*.tar
+*.tar.gz
+*.7z

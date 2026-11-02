@@ -1,12 +1,15 @@
 """Flask 网站：猜数字游戏与原有五子棋。"""
 import os
 import secrets
-from flask import Flask, jsonify, request, send_from_directory, session
+from pathlib import Path
+
+from flask import Flask, abort, jsonify, request, send_file, send_from_directory, session
 from online import socketio
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 socketio.init_app(app)
+app.config["LUXFATUM_INSTALLER"] = os.environ.get("LUXFATUM_INSTALLER", "")
 DIFFICULTIES = {
     "easy": {"maximum": 50, "attempts": 12, "label": "简单"},
     "normal": {"maximum": 100, "attempts": 10, "label": "普通"},
@@ -74,9 +77,54 @@ def online_game():
 def tictactoe():
     return send_from_directory(app.root_path, "tictactoe.html")
 
+
+@app.get("/snake")
+def snake():
+    return send_from_directory(app.root_path, "snake.html")
+
+
+@app.get("/2048")
+def game_2048():
+    return send_from_directory(app.root_path, "2048.html")
+
+
+@app.get("/chess")
+def chess():
+    return send_from_directory(app.root_path, "chess.html")
+
+
 @app.get("/gomoku")
 def gomoku():
     return send_from_directory(app.root_path, "index.html")
+
+
+@app.get("/tetris")
+def tetris():
+    return send_from_directory(app.root_path, "tetris.html")
+
+
+@app.get("/breakout")
+def breakout():
+    return send_from_directory(app.root_path, "breakout.html")
+
+
+@app.get("/minesweeper")
+def minesweeper():
+    return send_from_directory(app.root_path, "minesweeper.html")
+
+
+@app.get("/luxfatum/download")
+def download_luxfatum():
+    installer = app.config.get("LUXFATUM_INSTALLER")
+    if not installer:
+        abort(404, description="LuxFatum installer is not configured.")
+    installer_path = Path(installer).expanduser()
+    if not installer_path.is_absolute():
+        installer_path = Path(app.root_path) / installer_path
+    if not installer_path.is_file():
+        abort(404, description="LuxFatum installer is unavailable.")
+    return send_file(installer_path, as_attachment=True)
+
 
 
 if __name__ == "__main__":

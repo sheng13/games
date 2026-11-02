@@ -17,13 +17,16 @@
     <!-- 瀏覽器分頁標題 -->
 
     <style>
+        :root { --page:#070b18; --panel:rgba(15,23,42,.92); --panel-strong:#111c33; --text:#f8fafc; --muted:#aebbd0; --line:rgba(255,255,255,.16); --cyan:#67e8f9; --purple:#a78bfa; --danger:#fb7185; --board:#d6aa64; --board-line:#6f4e24; }
         /* =========================
            整體頁面樣式
            ========================= */
         body {
-            font-family: Arial, sans-serif; /* 字型 */
+            font-family: system-ui, "Microsoft YaHei", sans-serif; /* 字型 */
             text-align: center;             /* 文字置中 */
-            background: #f0f0f0;            /* 背景顏色 */
+            color: var(--text);
+            background: radial-gradient(circle at 15% 15%,#3730a3,transparent 34%), radial-gradient(circle at 85% 80%,#155e75,transparent 32%), var(--page);
+            background-attachment: fixed;            /* 背景顏色 */
             margin: 0;                      /* 外距 */
             padding: 20px;                  /* 內距 */
             display: flex;                  /* 用 flex 讓整體垂直分布 */
@@ -36,7 +39,7 @@
         /* 標題樣式 */
         h1 {
             margin-bottom: 10px;   /* 下方留白 */
-            color: #222;           /* 字體顏色 */
+            color: var(--text);           /* 字體顏色 */
         }
 
         /* 狀態文字（目前輪到誰、勝負等） */
@@ -44,14 +47,14 @@
             font-size: 22px;       /* 字體大小 */
             margin: 5px;
             font-weight: bold;     /* 粗體 */
-            color: #333;
+            color: var(--text);
             height: 30px;          /* 固定高度避免跳動 */
         }
 
         /* AI 上一手說明（小字） */
         #ai-log {
             font-size: 13px;
-            color: #888;
+            color: var(--muted);
             height: 16px;
             margin-bottom: 4px;
         }
@@ -64,18 +67,18 @@
         #timer-container {
             width: min(464px, 92vw); /* 随屏幕自动缩放 */
             height: 12px;          /* 高度 */
-            background: #ddd;      /* 灰色背景 */
+            background: rgba(255,255,255,.14);      /* 灰色背景 */
             margin: 10px auto;     /* 水平置中 */
             border-radius: 6px;    /* 圓角 */
             overflow: hidden;      /* 超出部分隱藏 */
-            border: 1px solid #bbb;
+            border: 1px solid var(--line);
         }
 
         /* 時間條本體 */
         #timer-bar {
             width: 100%;           /* 一開始滿格 */
             height: 100%;
-            background: #4caf50;   /* 綠色 */
+            background: linear-gradient(90deg,var(--cyan),var(--purple));   /* 綠色 */
             transition:
                 width 0.1s linear,
                 background-color 0.5s;
@@ -92,7 +95,7 @@
             grid-template-columns: repeat(15,var(--board-cell)); /* 15 欄 */
             grid-template-rows: repeat(15,var(--board-cell));    /* 15 列 */
             gap: 0;                                /* 让网格线连续 */
-            background: #e9c48b;                   /* 木质棋盘底色 */
+            background: var(--board);                   /* 木质棋盘底色 */
             padding: 12px;
             width: max-content;
             margin: 10px auto;
@@ -115,7 +118,7 @@
         .cell::after {
             content: "";
             position: absolute;
-            background: #6f4e24;
+            background: var(--board-line);
             z-index: 0;
             pointer-events: none;
         }
@@ -152,15 +155,17 @@
             font-size: 16px;
             cursor: pointer;
             border-radius: 5px;
-            border: 1px solid #999;
-            background: #fff;
+            color: var(--text);
+            border: 1px solid var(--line);
+            background: var(--panel);
             font-weight: bold;
             margin: 4px;
         }
 
         /* 滑鼠移到按鈕上的效果 */
         button:hover {
-            background: #e0e0e0;
+            border-color: var(--cyan);
+            background: #172554;
         }
 
         /* 頂部工具列（圖示按鈕） */
@@ -176,8 +181,8 @@
             width: 48px;
             height: 48px;
             border-radius: 12px;
-            border: 1px solid #bbb;
-            background: #fff;
+            border: 1px solid var(--line);
+            background: var(--panel);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -186,7 +191,7 @@
             transition: background 0.2s, transform 0.1s;
             padding: 0;
         }
-        .tool-btn:hover { background: #eef3ff; transform: translateY(-1px); }
+        .tool-btn:hover { background: #172554; border-color:var(--cyan); transform: translateY(-1px); }
         .tool-btn:active { transform: translateY(1px); }
 
         .mode-picker {
@@ -197,11 +202,11 @@
         }
         .mode-picker select {
             padding:8px 10px;
-            border:1px solid #9badff;
+            color:var(--text); border:1px solid var(--line);
             border-radius:8px;
-            background:#fff;
+            background:var(--panel);
         }
-        .tool-btn svg { width: 26px; height: 26px; fill: #333; }
+        .tool-btn svg { width: 26px; height: 26px; fill: var(--cyan); }
 
         /* 棋盤容器：grid 三欄，棋盤居中，歷史/回放與棋盤頂部對齊 */
         #game-container{
@@ -233,8 +238,8 @@
             padding:8px;
             width:100%;
             box-sizing:border-box;
-            background:#ffffff;
-            border:2px solid #aaa;
+            background:var(--panel-strong);
+            border:1px solid var(--line);
             border-radius:10px;
             box-shadow:0 3px 8px rgba(0,0,0,0.2);
         }
@@ -245,7 +250,7 @@
             grid-template-columns:repeat(15,4px);
             grid-template-rows:repeat(15,4px);
             gap:1px;
-            background:#d1a153;
+            background:var(--board);
             padding:3px;
             border-radius:4px;
             transition:transform 0.22s ease, box-shadow 0.22s ease;
@@ -260,7 +265,7 @@
             grid-template-columns:repeat(15,6px);
             grid-template-rows:repeat(15,6px);
             transform:scale(1.05);
-            border:2px solid red;
+            border:2px solid var(--cyan);
         }
         .history-board.latest:hover{ transform:scale(1.05); }
         .history-preview{
@@ -272,7 +277,7 @@
             gap:1px;
             padding:10px;
             width:max-content;
-            background:#d1a153;
+            background:var(--board);
             border:3px solid #6a4520;
             border-radius:10px;
             box-shadow:0 16px 42px rgba(0,0,0,.5);
@@ -295,9 +300,9 @@
         #sidepanel{
             width:240px;
             box-sizing:border-box;
-            border:2px solid #6a8cff;
+            border:1px solid var(--line);
             border-radius:10px;
-            background:#f7f9ff;
+            background:var(--panel);
             box-shadow:0 3px 8px rgba(0,0,0,0.15);
             overflow:hidden;
             height:478px;              /* 与 15×15 主棋盘外框高度一致 */
@@ -310,10 +315,10 @@
             padding:7px 10px;
             font-size:13px;
             font-weight:bold;
-            color:#3a5bd0;
+            color:var(--cyan);
             cursor:pointer;
             user-select:none;
-            background:#eef2ff;        /* 把手底色，像一條可展開的標籤 */
+            background:#172554;        /* 把手底色，像一條可展開的標籤 */
         }
         /* 常駐播放鈕：推到把手最右側，收起態也能直接點 */
         #sidepanel .handle-play{
@@ -321,9 +326,9 @@
             width:24px;
             height:24px;
             border-radius:50%;
-            border:1px solid #3a5bd0;
-            background:#fff;
-            color:#3a5bd0;
+            border:1px solid var(--cyan);
+            background:var(--panel);
+            color:var(--cyan);
             font-size:11px;
             line-height:1;
             cursor:pointer;
@@ -332,7 +337,7 @@
             justify-content:center;
             padding:0;
         }
-        #sidepanel .handle-play:hover{ background:#dde6ff; }
+        #sidepanel .handle-play:hover{ background:#164e63; }
         /* 收起時顯示 ▸，展開後變 ▾ */
         #sidepanel .sidepanel-handle::before{
             content:"\25B8";            /* ▸ 右三角，提示可展開 */
@@ -342,7 +347,7 @@
         #sidepanel:hover .sidepanel-handle::before{
             content:"\25BE";            /* ▾ 下三角，提示已展開 */
         }
-        #sidepanel .sidepanel-handle svg{ width:16px; height:16px; fill:#3a5bd0; }
+        #sidepanel .sidepanel-handle svg{ width:16px; height:16px; fill:var(--cyan); }
         #sidepanel .sidepanel-body{
             padding:8px 10px 12px;
             display:flex;
@@ -363,22 +368,22 @@
             gap:6px;
         }
         #sidepanel .rp-btn{
-            border:1px solid #9badff;
+            color:var(--text); border:1px solid var(--line);
             border-radius:6px;
-            background:#fff;
-            color:#2947b8;
+            background:var(--panel);
+            color:var(--text);
             cursor:pointer;
             padding:6px 4px;
             font-size:12px;
             margin:0;
         }
-        #sidepanel .rp-btn svg{ width:24px; height:24px; fill:#3a5bd0; }
+        #sidepanel .rp-btn svg{ width:24px; height:24px; fill:var(--cyan); }
         #sidepanel .rp-btn:disabled{ opacity:0.3; cursor:default; }
         #sidepanel input[type=range]{ width:100%; }
-        #sidepanel .rp-info{ font-size:12px; color:#555; text-align:center; }
+        #sidepanel .rp-info{ font-size:12px; color:var(--muted); text-align:center; }
 
         .history-cell{
-            background:#e9c48b;
+            background:var(--board);
         }
 
         .history-black{
@@ -399,13 +404,14 @@
             z-index: 1000;
             padding: 10px 16px;
             color: #fff;
-            background: #24324a;
+            background: var(--panel);
+            border: 1px solid var(--line);
             border-radius: 999px;
             text-decoration: none;
             font-weight: bold;
             box-shadow: 0 3px 10px rgba(0,0,0,.25);
         }
-        .lobby-back:hover { background: #344b70; }
+        .lobby-back:hover { background: #172554; border-color:var(--cyan); }
         @media (max-width: 900px) {
             body { padding: 12px; overflow-x: hidden; }
             h1 { font-size: clamp(24px, 7vw, 34px); }
@@ -677,12 +683,12 @@
         if (timeLeft <= 4) {
 
             // 紅色警告
-            timerBar.style.background = '#f44336';
+            timerBar.style.background = "var(--danger)";
 
         } else {
 
             // 時間充足時維持綠色
-            timerBar.style.background = '#4caf50';
+            timerBar.style.background = "linear-gradient(90deg,var(--cyan),var(--purple))";
         }
     }
 
