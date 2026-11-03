@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">games — Python 小遊戲網站</title>
+  <desc id="desc">黑底紅色遊戲控制器線稿的裝飾標題橫幅，不是遊戲截圖。</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#08090c"/><stop offset="1" stop-color="#2a0e18"/></linearGradient></defs>
+  <rect width="1280" height="360" rx="22" fill="url(#bg)"/>
+  <path d="M0 330H1280M960 0V360M1120 0V360" stroke="#ffffff" stroke-opacity=".04"/>
+  <rect x="56" y="61" width="48" height="5" rx="2" fill="#ef405c"/>
+  <text x="56" y="105" fill="#fa697c" font-family="monospace" font-size="15" letter-spacing="3">SHENG13 / BROWSER ARCADE</text>
+  <text x="52" y="192" fill="#faf7f8" font-family="Arial, sans-serif" font-size="78" font-weight="700">games</text>
+  <text x="56" y="243" fill="#c7b6bc" font-family="sans-serif" font-size="24">Python 小遊戲網站 · 單人挑戰與雙人對戰</text>
+  <text x="56" y="305" fill="#947f88" font-family="monospace" font-size="15">FLASK / JAVASCRIPT / SOCKET.IO</text>
+  <g transform="translate(851 77)" stroke="#ef506b" stroke-width="2" fill="#1b1018">
+    <path d="M68 44H228C248 44 263 60 270 89L296 177C302 205 274 220 254 202L211 164H85L42 202C22 220-6 205 0 177L26 89C33 60 48 44 68 44Z"/>
+    <path d="M68 83V141M39 112H97" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="222" cy="89" r="10" fill="#ca2e4c"/><circle cx="249" cy="116" r="10"/>
+    <circle cx="195" cy="116" r="10"/><circle cx="222" cy="143" r="10" fill="#ca2e4c"/>
+    <path d="M131 126H145M157 126H171" stroke-width="5" stroke-linecap="round"/>
+    <path d="M148 44V13H188" stroke-opacity=".45"/>
+  </g>
+</svg>

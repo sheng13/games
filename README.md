@@ -1,145 +1,109 @@
-# Python 小游戏网站
+![games：Python 小遊戲網站](docs/readme-banner.svg)
 
-一个使用 Flask、HTML、CSS、JavaScript 与 Socket.IO 制作的响应式小游戏网站。支持电脑与手机浏览器，并可继续加入更多游戏。
+# games · Python 小遊戲網站
 
-## 游戏
+以 Flask 提供遊戲大廳，搭配 HTML、CSS、JavaScript 與 Socket.IO 的小遊戲集合。包含單人挑戰、規則式 AI、本機雙人與區域網路房間對戰；遊戲入口集中在 `/`，不需要前端建置流程。
 
-- 猜数字：简单、普通、困难三档
-- AI 五子棋：三档 AI、本地双人、计时、历史与回放
-- 三子移动井字棋：三档 AI、本地双人，每方三颗棋，放满后移动
-- 霓虹贪吃蛇：三档速度、键盘与手机触控、暂停和本机最高分
-- 霓虹 2048：键盘与手机滑动、撤销一步和本机最高分
-- 西洋棋：三档 AI、本地双人、合法走法、将军与特殊规则
-- 霓虹俄罗斯方块：暂存方块、下一个预告、落地预测虚线与行消除积分
-- 霓虹打砖块：粒子碰撞、强化道具掉落、多关卡与弹射物理
-- 霓虹扫雷：初中高三档难度、双击展开与移动端插旗模式
-- 联机西洋棋：房间代码双人对弈、服务端合法性验证与升变选择
-- 局域网联机双人：两台设备用 6 位房间代码对战五子棋、井字棋或西洋棋
+[遊戲與路由](#games) · [安裝啟動](#setup) · [連線玩法](#online) · [選用下載](#download) · [專案地圖](#map) · [測試與限制](#limits)
 
-## 项目结构
+<a id="games"></a>
+## 遊戲與路由
 
-```text
-.
-├── app.py               # Flask 入口、页面路由、猜数字 API
-├── online.py            # Socket.IO 联机房间与服务器端规则
-├── games.html           # 游戏大厅
-├── guess.html           # 猜数字
-├── index.html           # AI 五子棋
-├── tictactoe.html       # 三子移动井字棋
-├── snake.html           # 霓虹贪吃蛇
-├── 2048.html            # 霓虹 2048
-├── tetris.html          # 霓虹俄罗斯方块
-├── breakout.html        # 霓虹打砖块
-├── minesweeper.html      # 霓虹扫雷
-├── chess.html           # 本地双人西洋棋
-├── online.html          # 局域网联机双人页面
-├── static/              # 浏览器端依赖
-├── requirements.txt     # Python 依赖
-└── tests/               # 独立测试与小型下载样本，不含真实安装包
-```
+以下功能依 [app.py](app.py)、[online.py](online.py) 與各遊戲頁原始碼整理；檔案連結用於閱讀程式，實際遊玩請先啟動 Flask，再使用路由。
 
-## 安装与启动
+| 路由 | 原始碼 | 內容 |
+|---|---|---|
+| `/` | [games.html](games.html) | 遊戲大廳 |
+| `/guess` | [guess.html](guess.html) | 猜數字；簡單、普通、困難三檔，後端回傳大小提示與剩餘次數 |
+| `/gomoku` | [index.html](index.html) | 五子棋；三檔 AI、本機雙人、計時、歷史棋盤與回放 |
+| `/tictactoe` | [tictactoe.html](tictactoe.html) | 三子移動井字棋；三檔 AI、本機雙人，每方放滿三子後移動 |
+| `/snake` | [snake.html](snake.html) | 霓虹貪吃蛇；鍵盤、觸控、速度選擇、暫停與本機最高分 |
+| `/2048` | [2048.html](2048.html) | 霓虹 2048；鍵盤、滑動、撤銷一步與本機最高分 |
+| `/chess` | [chess.html](chess.html) | 西洋棋；三檔 AI、本機雙人、合法走法提示與升變選擇 |
+| `/tetris` | [tetris.html](tetris.html) | 霓虹俄羅斯方塊；暫存、下一個方塊、落地預測與消行積分 |
+| `/breakout` | [breakout.html](breakout.html) | 霓虹打磚塊；碰撞、強化道具與多關卡 |
+| `/minesweeper` | [minesweeper.html](minesweeper.html) | 霓虹踩地雷；三檔難度、展開與行動裝置插旗模式 |
+| `/online` | [online.html](online.html) | 五子棋、三子移動井字棋、西洋棋的雙人房間 |
+| `/luxfatum/download` | [app.py](app.py) | 選用安裝包下載；未設定或檔案不存在時回傳 404 |
+
+注意：根目錄的 `index.html` 是五子棋，Flask 的首頁 `/` 則提供 `games.html`。直接使用靜態伺服器不會提供猜數字 API、Socket.IO 或下載功能。
+
+<a id="setup"></a>
+## 安裝啟動
+
+準備 Python 3 與 `uv`，在儲存庫根目錄建立隔離環境：
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python3 -m pip install -r requirements.txt
-python3 app.py
+uv venv .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python app.py
 ```
 
-本机打开：
+本機開啟 `http://127.0.0.1:8000/`，從大廳選擇遊戲；按 `Ctrl+C` 停止。依賴見 [requirements.txt](requirements.txt)：Flask、Flask-SocketIO 與 gunicorn；不需要 npm 安裝。
 
-```text
-http://127.0.0.1:8000/
-```
+程式預設監聽 `0.0.0.0:8000` 並開啟 `debug=True`，只適合受控的開發環境，不能直接暴露到公網。同一區域網路的設備可使用 `http://伺服器區網IP:8000/`；防火牆須允許 TCP 8000。虛擬機還需確認橋接或轉送設定，不能只把 `127.0.0.1` 分享給另一台設備。
 
-同一局域网的其他设备打开：
+`SECRET_KEY` 可由程序環境設定，未設定時會隨程序產生隨機值；重新啟動可能讓既有猜數字 session 失效。程式不會自動讀取 `.env`，請勿把真實金鑰放進文件或儲存庫。
 
-```text
-http://服务器局域网IP:8000/
-```
+<a id="online"></a>
+## 連線玩法
 
-查询服务器 IP：
+1. 兩台設備連上同一區域網路，開啟同一台伺服器的 `/online`。
+2. 第一位玩家選擇五子棋、井字棋或西洋棋，建立房間。
+3. 將六位數房間代碼交給第二位玩家，第二位輸入代碼加入。
+4. 維持雙方頁面連線；任一玩家中斷連線，伺服器就會結束該房間。
 
-```bash
-hostname -I
-```
+聯機落子由 `online.py` 檢查回合與合法性，西洋棋包含將軍判定、王車易位、吃過路兵與升變處理。房間只存在單一 Python 程序的記憶體中，重啟不會保留；沒有斷線續局或跨程序共用機制。
 
-如果运行在虚拟机中，通常需要使用桥接网络，且防火墙必须允许 TCP 8000。
+<a id="download"></a>
+## 選用：LuxFatum 安裝包
 
-以上 `python3 app.py` 启动方式仅供本地开发，不应直接作为公网生产服务。
-本副本不包含真实密钥、虚拟环境、游戏安装包或原 VM 的绝对路径。
+大廳保留下載入口，但儲存庫不附真實安裝包。未設定下載檔案時只會讓 `/luxfatum/download` 回傳 404，不影響其他遊戲。
 
-## 可选：LuxFatum 安装包下载
-
-游戏大厅保留 LuxFatum 下载入口，但实际安装包不放入此源码副本。
-没有配置安装包，或文件不存在时，`/luxfatum/download` 返回 404，其他小游戏仍可使用。
-
-启动前通过 `LUXFATUM_INSTALLER` 环境变量指定你有权分发的安装包，例如：
+若你已另行準備具有散布權的安裝包，可在啟動前指定路徑：
 
 ```bash
 export LUXFATUM_INSTALLER="releases/LuxFatum-Setup.exe"
-python3 app.py
+.venv/bin/python app.py
 ```
 
-相对路径以项目目录为基准，也支持绝对路径和用户目录 `~`。
-配置应留在部署环境中；程序不自动读取 `.env` 文件。`releases/` 和常见安装包后缀已加入忽略规则。
-请另行管理安装包的存储、发布权限与版本；不要将原 VM 的大型安装包直接提交到源码仓库。
+相對路徑以 `app.py` 所在目錄為準，也接受絕對路徑與 `~`。上例只是設定範例，不會產生或下載安裝包；請把大型交付物、版本與發布權限分開管理。
 
-## 独立测试
+<a id="map"></a>
+## 專案地圖
 
-安装 `requirements.txt` 后，在项目目录执行：
+```text
+.
+├── app.py                      # 頁面路由、猜數字 API、選用下載
+├── online.py                   # Socket.IO 房間與伺服器端棋類規則
+├── games.html                  # 大廳；其餘遊戲頁見路由表
+├── static/socket.io.min.js     # 隨附瀏覽器端 Socket.IO
+├── requirements.txt            # Python 依賴
+├── tests/                      # 下載、頁面及遊戲邏輯測試
+│   └── fixtures/               # 微型文字下載樣本，不是真實安裝包
+├── CODE_WALKTHROUGH.md          # 既有程式導讀
+├── tools/                      # 簡報產生工具
+├── README.md
+└── docs/readme-banner.svg
+```
+
+若要新增遊戲，需同時調整 HTML 頁面、`app.py` 路由與 `games.html` 大廳；聯機遊戲另需在 `online.py` 實作伺服器端狀態與規則。[既有程式導讀](CODE_WALKTHROUGH.md) 可作為輔助閱讀，實際行為仍以原始碼為準。
+
+<a id="limits"></a>
+## 測試與限制
+
+在已安裝依賴的環境，可從根目錄執行既有測試：
 
 ```bash
-python3 -B -W error::ResourceWarning -m unittest discover -s tests -v
+.venv/bin/python -B -W error::ResourceWarning -m unittest discover -s tests -v
 ```
 
-测试使用随附的微型文本样本验证下载，不依赖真实 LuxFatum 安装包，
-也不启动监听端口、连接现行游戏服务或创建并清除临时文件。
-此测试覆盖页面响应、猜数字初始化及下载配置。
-若已安装 Node.js，也会使用其内建模块执行俄罗斯方块暂存与贪吃蛇满盘等回归测试；
-不需要 npm 套件。没有 Node.js 时，JavaScript 逻辑测试会明确标为跳过。
-这些测试运行真实游戏脚本，但以无操作的 UI／定时器适配器替代浏览器绘图，
-不代表已完成所有游戏的浏览器交互测试。
+[test_luxfatum.py](tests/test_luxfatum.py) 檢查頁面回應、猜數字初始化與下載設定，使用隨附文字樣本。[test_gameplay.py](tests/test_gameplay.py) 透過 Node.js 檢查俄羅斯方塊暫存及貪吃蛇邏輯；若沒有 Node.js，這部分會標示跳過，不需 npm 套件。JavaScript 測試以替代 UI／計時器執行邏輯，不等於完整瀏覽器操作測試。
 
-## 源码副本与后续上传
+- 本次文件整理未安裝套件、執行遊戲或重跑測試，沒有宣稱測試已通過。
+- 多款遊戲把最高分保存在瀏覽器 `localStorage`；不會同步到其他裝置，清除網站資料後可能遺失。
+- 這是學習與休閒專案，沒有正式帳號、競賽防作弊或持久化房間機制；Socket.IO 設定接受所有來源，公開部署前需另作安全設計。
+- 棋類 AI 是程式內的規則與搜尋邏輯，不會呼叫外部大型語言模型，也不代表專業棋力或完整賽事規則認證。
+- 各遊戲與第三方程式庫名稱、商標屬其權利人；隨附 Socket.IO 的授權請保留原始檔標示。根目錄未附專案授權檔，對外重用程式、素材或安裝包前請先確認權利。
 
-这是独立的源码准备副本，不包含原专案的 `.git`、远端配置、GitLab CI 配置或大体积交付物。
-它不是完整历史镜像，也不是对原专案的移动或替换。
-未来更新既有 GitHub 仓库时，应仅使用经确认的文件允许清单；
-本副本没有附带的旧文件不代表获准删除 GitHub 上的旧文件。
-公开发布前仍须确认代码与素材的权利，以及目标仓库的可见性。
-
-## 主要路由
-
-| 路由 | 功能 |
-|---|---|
-| `/` | 游戏大厅 |
-| `/guess` | 猜数字 |
-| `/gomoku` | AI／本地双人五子棋 |
-| `/tictactoe` | AI／本地双人井字棋 |
-| `/snake` | 霓虹贪吃蛇 |
-| `/2048` | 霓虹 2048 |
-| `/tetris` | 霓虹俄罗斯方块 |
-| `/breakout` | 霓虹打砖块 |
-| `/minesweeper` | 霓虹扫雷 |
-| `/chess` | 本地双人西洋棋 |
-| `/online` | 局域网联机双人 |
-| `/luxfatum/download` | 可选安装包下载；未配置或文件不存在时返回 404 |
-
-
-## 联机玩法
-
-1. 两台设备连接同一个局域网。
-2. 第一台打开 `/online`，选择游戏并建立房间。
-3. 保持页面开启，把 6 位代码告诉第二位玩家。
-4. 第二台打开相同网址并输入代码。
-5. 房间创建者刷新或关闭页面后，房间会结束。
-
-## 后续增加游戏
-
-1. 新增一个 HTML 页面。
-2. 在 `app.py` 加入页面路由。
-3. 在 `games.html` 加入游戏卡片。
-4. 若需实时联机，在 `online.py` 增加服务器端状态和规则。
-5. 完成桌面、手机和双客户端测试后提交。
+頁首紅黑 SVG 是標題裝飾，不是遊戲截圖。此文件只描述目前原始碼，沒有修改既有程式、CI 設定或部署服務。
